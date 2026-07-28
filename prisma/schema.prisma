@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TUTOR
+  DELEGATE
+  STUDENT
+  ADMIN
+}
+
+enum PostItStatus {
+  OPEN
+  ARCHIVED
+}
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  boards    Board[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role     @default(STUDENT)
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  posts     PostIt[]
+}
+
+model Board {
+  id        String   @id @default(cuid())
+  title     String
+  groupName String
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  posts     PostIt[]
+}
+
+model PostIt {
+  id        String      @id @default(cuid())
+  message   String
+  status    PostItStatus @default(OPEN)
+  anonymous Boolean     @default(false)
+  boardId   String
+  authorId  String?
+  board     Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author    User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt DateTime    @default(now())
+}
+
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  title     String
+  startsAt  DateTime
+  endsAt    DateTime?
+  schoolId  String
+  createdAt DateTime @default(now())
+}
