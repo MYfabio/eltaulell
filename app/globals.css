@@ -1,20 +1,33 @@
-:root { --ink:#17302a; --paper:#f8f4eb; --mint:#d9ead8; --accent:#e16b45; }
-* { box-sizing:border-box; }
-body { margin:0; background:var(--paper); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
-main { max-width:1120px; margin:auto; padding:24px; }
-nav { display:flex; justify-content:space-between; align-items:center; font-size:14px; }
-nav strong { font-size:22px; }
-.hero { max-width:760px; padding:100px 0 72px; }
-.eyebrow { color:var(--accent); font-size:12px; font-weight:700; letter-spacing:.12em; }
-h1 { font-size:clamp(44px,8vw,84px); line-height:.96; margin:12px 0 24px; letter-spacing:-.05em; }
-h2 { margin:0 0 10px; }
-p { font-size:18px; line-height:1.55; }
-button,.button { border:0; border-radius:999px; padding:13px 20px; background:var(--ink); color:white; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; }
-.actions { display:flex; gap:10px; margin-top:30px; }
-.secondary { color:var(--ink); background:transparent; outline:1px solid var(--ink); }
-.cards { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-article { min-height:220px; padding:24px; border-radius:16px; background:var(--mint); display:flex; flex-direction:column; }
-article:nth-child(2) { background:#f6d8a7; } article:nth-child(3) { background:#d7e6f5; } article:nth-child(4) { background:#f1d6db; }
-article p { font-size:15px; flex:1; } a { color:inherit; font-weight:700; }
-.roles { padding:96px 0 36px; } .roles div { display:flex; gap:12px; flex-wrap:wrap; } .roles span { padding:12px 16px; border-radius:999px; background:white; }
-@media (max-width:760px) { nav span { display:none; } .hero { padding:70px 0 50px; } .cards { grid-template-columns:1fr; } }
+:root {
+  --ink: #253247;
+  --muted: #6f7d91;
+  --navy: #1d3557;
+  --cream: #f6f2e9;
+  --orange: #f49a50;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #f7f8f4;
+}
+
+body {
+  margin: 0;
+  background: #f7f8f4;
+  color: var(--ink);
+  font-family: Inter, ui-rounded, "Avenir Next", system-ui, -apple-system, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
