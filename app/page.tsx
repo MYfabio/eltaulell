@@ -1,1 +1,5 @@
-export { default } from "./taulell/page";
+import { redirect } from "next/navigation";
+
+export default function HomePage() {
+  redirect("/taulell");
+}

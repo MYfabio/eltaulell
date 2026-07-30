@@ -20,7 +20,7 @@
 .user-area,
 .today-card,
 .delegate,
-.platforms button,
+.platforms a,
 .card-title,
 .chat-launcher,
 .chat-panel header {
@@ -65,16 +65,21 @@
   gap: 28px;
 }
 
-.topbar nav button {
+.topbar nav a {
+  height: 100%;
+  display: flex;
+  align-items: center;
   border: 0;
   background: none;
+  color: inherit;
+  text-decoration: none;
   font-size: 13px;
   font-weight: 650;
   position: relative;
   cursor: pointer;
 }
 
-.topbar nav button:not(.nav-active) {
+.topbar nav a:not(.nav-active) {
   color: #6c788b;
 }
 
@@ -133,6 +138,13 @@
 
 .user-copy strong {
   font-size: 12px;
+}
+
+.session-exit {
+  margin-left: 5px;
+  color: #788494;
+  font-size: 9px;
+  text-decoration: underline;
 }
 
 .welcome {
@@ -651,13 +663,15 @@ aside {
   margin-bottom: 9px;
 }
 
-.platforms button {
+.platforms a {
   width: 100%;
   border: 0;
   border-top: 1px solid #eeefeb;
   background: white;
   padding: 10px 2px;
+  color: inherit;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .platforms b {

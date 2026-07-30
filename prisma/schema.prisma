@@ -7,11 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
+enum MembershipRole {
+  COORDINATOR
   TUTOR
   DELEGATE
   STUDENT
-  ADMIN
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+enum GroupMemberRole {
+  TUTOR
+  DELEGATE
+  STUDENT
 }
 
 enum PostItStatus {
@@ -19,52 +31,248 @@ enum PostItStatus {
   ARCHIVED
 }
 
+enum PostItType {
+  NOTICE
+  TASK
+  ACTIVITY
+  MATERIAL
+  QUESTION
+}
+
+enum IntegrationProvider {
+  GOOGLE_CLASSROOM
+  MOODLE
+}
+
+enum IntegrationStatus {
+  DISCONNECTED
+  PENDING
+  CONNECTED
+  ERROR
+}
+
+enum IdentityProvider {
+  GOOGLE
+}
+
 model School {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  users     User[]
-  boards    Board[]
+  id               String                  @id @default(cuid())
+  name             String
+  slug             String                  @unique
+  emailDomain      String?
+  moodleBaseUrl    String?
+  active           Boolean                 @default(true)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  memberships      SchoolMembership[]
+  groups           Group[]
+  integrations     IntegrationConnection[]
+  invitations      Invitation[]
+  calendarEvents   CalendarEvent[]
+  auditLogs        AuditLog[]
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      Role     @default(STUDENT)
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  posts     PostIt[]
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  image            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  memberships      SchoolMembership[]
+  posts            PostIt[]
+  oauthAccounts    OAuthAccount[]
+  sessions         Session[]
+  acceptedInvites  Invitation[]      @relation("AcceptedInvitation")
+  auditLogs        AuditLog[]
+}
+
+model SchoolMembership {
+  id               String            @id @default(cuid())
+  schoolId         String
+  userId           String
+  role             MembershipRole
+  status           MembershipStatus  @default(ACTIVE)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  school           School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupMemberships GroupMembership[]
+
+  @@unique([schoolId, userId])
+  @@index([schoolId, role])
+  @@index([userId, status])
+}
+
+model Group {
+  id               String             @id @default(cuid())
+  schoolId         String
+  name             String
+  stage            String
+  section          String?
+  academicYear     String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  school           School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  members          GroupMembership[]
+  board            Board?
+  calendarEvents   CalendarEvent[]
+  externalCourses  ExternalCourse[]
+
+  @@unique([schoolId, academicYear, name])
+  @@index([schoolId])
+}
+
+model GroupMembership {
+  id                 String            @id @default(cuid())
+  groupId            String
+  schoolMembershipId String
+  role               GroupMemberRole
+  createdAt          DateTime          @default(now())
+  group              Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  schoolMembership   SchoolMembership  @relation(fields: [schoolMembershipId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, schoolMembershipId])
+  @@index([schoolMembershipId])
 }
 
 model Board {
   id        String   @id @default(cuid())
+  groupId   String   @unique
   title     String
-  groupName String
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   posts     PostIt[]
 }
 
 model PostIt {
-  id        String      @id @default(cuid())
+  id        String       @id @default(cuid())
+  title     String
   message   String
+  type      PostItType   @default(NOTICE)
   status    PostItStatus @default(OPEN)
-  anonymous Boolean     @default(false)
+  anonymous Boolean      @default(false)
   boardId   String
   authorId  String?
-  board     Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  author    User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  createdAt DateTime    @default(now())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  board     Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author    User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([boardId, status, createdAt])
+  @@index([authorId])
 }
 
 model CalendarEvent {
-  id        String   @id @default(cuid())
-  title     String
-  startsAt  DateTime
-  endsAt    DateTime?
-  schoolId  String
-  createdAt DateTime @default(now())
+  id         String               @id @default(cuid())
+  schoolId   String
+  groupId    String?
+  title      String
+  description String?
+  startsAt   DateTime
+  endsAt     DateTime?
+  provider   IntegrationProvider?
+  externalId String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  school     School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group      Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, startsAt])
+  @@index([groupId, startsAt])
+}
+
+model IntegrationConnection {
+  id               String              @id @default(cuid())
+  schoolId         String
+  provider         IntegrationProvider
+  status           IntegrationStatus   @default(DISCONNECTED)
+  baseUrl          String?
+  externalTenantId String?
+  settings         Json?
+  lastSyncedAt     DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  school           School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, provider])
+  @@index([status])
+}
+
+model ExternalCourse {
+  id           String              @id @default(cuid())
+  groupId      String
+  provider     IntegrationProvider
+  externalId   String
+  name         String
+  url          String?
+  lastSyncedAt DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  group        Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@index([groupId, provider])
+}
+
+model OAuthAccount {
+  id                     String           @id @default(cuid())
+  userId                 String
+  provider               IdentityProvider
+  providerAccountId      String
+  accessTokenCiphertext  String?
+  refreshTokenCiphertext String?
+  accessTokenExpiresAt   DateTime?
+  scopes                 String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Invitation {
+  id           String          @id @default(cuid())
+  schoolId     String
+  email        String
+  role         MembershipRole
+  tokenHash    String          @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  acceptedById String?
+  createdAt    DateTime        @default(now())
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  acceptedBy   User?           @relation("AcceptedInvitation", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, email])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  schoolId   String
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([actorId])
 }
