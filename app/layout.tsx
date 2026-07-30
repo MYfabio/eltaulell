@@ -4,9 +4,9 @@ import "./portal.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://eltaulell-production.up.railway.app"),
-  title: "El Taulell · Institut Can Roca",
+  title: "El Taulell · La comunitat educativa, més connectada",
   description:
-    "El suro digital de la classe: avisos, tasques, activitats, consultes i orientació educativa.",
+    "Plataforma educativa multi-centre per comunicar, escoltar l’alumnat i millorar l’acompanyament tutorial.",
   openGraph: {
     title: "El Taulell",
     description: "Tot el que passa a classe, en un sol lloc.",
