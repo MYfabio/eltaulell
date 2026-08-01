@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Usuari no vàlid" }, { status: 400 });
   }
 
-  const response = NextResponse.redirect(new URL("/taulell", request.url), 303);
+  const response = new NextResponse(null, {
+    status: 303,
+    headers: { Location: "/taulell" },
+  });
   response.cookies.set(DEMO_COOKIE, createDemoSession(viewer.id), {
     httpOnly: true,
     maxAge: 8 * 60 * 60,
