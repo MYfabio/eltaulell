@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DEMO_VIEWERS, getDemoViewer } from "@/lib/demo-auth";
+import { PERMISSION_LABELS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,11 @@ export default async function AccessPage() {
             <span>{viewer.roleLabel}</span>
             <h2>{viewer.name}</h2>
             <p>{roleDescriptions[viewer.role]}</p>
+            <div className="role-permissions" aria-label={`Permisos de ${viewer.roleLabel}`}>
+              {viewer.permissions.slice(0, 3).map((permission) => (
+                <span key={permission}>{PERMISSION_LABELS[permission]}</span>
+              ))}
+            </div>
             <small>{viewer.email}</small>
             <form action="/api/auth/demo" method="post">
               <input name="userId" type="hidden" value={viewer.id} />

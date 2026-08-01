@@ -1,10 +1,11 @@
 import PortalShell from "@/app/components/portal-shell";
-import { requireDemoViewer } from "@/lib/demo-auth";
+import { requireDemoPermission } from "@/lib/demo-auth";
+import { PERMISSIONS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function IntegrationsPage() {
-  const viewer = await requireDemoViewer(["COORDINATOR"]);
+  const viewer = await requireDemoPermission(PERMISSIONS.MANAGE_INTEGRATIONS);
   const googleConfigured = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
   );

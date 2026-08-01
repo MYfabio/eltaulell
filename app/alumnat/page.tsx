@@ -1,10 +1,11 @@
 import PortalShell from "@/app/components/portal-shell";
-import { requireDemoViewer } from "@/lib/demo-auth";
+import { requireDemoPermission } from "@/lib/demo-auth";
+import { PERMISSIONS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentPage() {
-  const viewer = await requireDemoViewer();
+  const viewer = await requireDemoPermission(PERMISSIONS.VIEW_OWN_SPACE);
 
   return (
     <PortalShell

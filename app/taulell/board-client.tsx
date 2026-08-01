@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import type { DemoViewer } from "@/lib/demo-auth";
+import {
+  can,
+  PERMISSIONS,
+  type Permission,
+  type PostKind,
+} from "@/lib/permissions";
 import "./taulell.css";
 
 type NoteType = "Avisos" | "Tasques" | "Activitats" | "Materials";
@@ -75,6 +81,20 @@ const noteStyles: Record<NoteType, { color: NoteColor; icon: string }> = {
   Materials: { color: "green", icon: "📚" },
 };
 
+const noteTypePermissions: Record<NoteType, Permission> = {
+  Avisos: PERMISSIONS.CREATE_NOTICE,
+  Tasques: PERMISSIONS.CREATE_TASK,
+  Activitats: PERMISSIONS.CREATE_ACTIVITY,
+  Materials: PERMISSIONS.CREATE_MATERIAL,
+};
+
+const noteKindByType: Record<NoteType, PostKind> = {
+  Avisos: "NOTICE",
+  Tasques: "TASK",
+  Activitats: "ACTIVITY",
+  Materials: "MATERIAL",
+};
+
 export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
   const [notes, setNotes] = useState(initialNotes);
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tot");
@@ -86,6 +106,17 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
   const [draftType, setDraftType] = useState<NoteType>("Avisos");
+  const [actionMessage, setActionMessage] = useState("");
+
+  const availableNoteTypes = useMemo(
+    () =>
+      filters
+        .slice(1)
+        .filter((type): type is NoteType =>
+          can(viewer, noteTypePermissions[type as NoteType]),
+        ),
+    [viewer],
+  );
 
   const visibleNotes = useMemo(
     () =>
@@ -114,14 +145,39 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
     }
   }
 
-  function addNote(event: FormEvent<HTMLFormElement>) {
+  async function addNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draftTitle.trim() || !draftBody.trim()) return;
 
+    if (!can(viewer, noteTypePermissions[draftType])) {
+      setActionMessage("Aquest perfil no pot publicar aquest tipus de contingut.");
+      return;
+    }
+
+    setActionMessage("");
+    const response = await fetch("/api/board/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: noteKindByType[draftType],
+        title: draftTitle,
+        body: draftBody,
+      }),
+    });
+    const result = (await response.json().catch(() => null)) as
+      | { error?: string; post?: { id: string; meta: string } }
+      | null;
+
+    if (!response.ok || !result?.post) {
+      setActionMessage(result?.error ?? "No s'ha pogut publicar el post-it.");
+      return;
+    }
+
+    const createdPost = result.post;
     const style = noteStyles[draftType];
     setNotes((current) => [
       {
-        id: crypto.randomUUID(),
+        id: createdPost.id,
         type: draftType,
         title: draftTitle.trim(),
         body: draftBody.trim(),
@@ -134,6 +190,23 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
     setDraftTitle("");
     setDraftBody("");
     setComposerOpen(false);
+  }
+
+  async function archiveNote(id: string) {
+    setActionMessage("");
+    const response = await fetch(`/api/board/posts/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    const result = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+
+    if (!response.ok) {
+      setActionMessage(result?.error ?? "No s'ha pogut arxivar el post-it.");
+      return;
+    }
+
+    setNotes((current) => current.filter((item) => item.id !== id));
   }
 
   return (
@@ -151,14 +224,16 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
           <Link className="nav-active" href="/taulell">
             El meu tauler
           </Link>
-          {viewer.role === "COORDINATOR" && (
+          {can(viewer, PERMISSIONS.MANAGE_SCHOOL) && (
             <Link href="/coordinacio">Coordinació</Link>
           )}
-          {["COORDINATOR", "TUTOR", "DELEGATE"].includes(viewer.role) && (
+          {can(viewer, PERMISSIONS.VIEW_GROUP_DASHBOARD) && (
             <Link href="/tutoria">Grup</Link>
           )}
-          <Link href="/alumnat">El meu espai</Link>
-          {viewer.role === "COORDINATOR" && (
+          {can(viewer, PERMISSIONS.VIEW_OWN_SPACE) && (
+            <Link href="/alumnat">El meu espai</Link>
+          )}
+          {can(viewer, PERMISSIONS.MANAGE_INTEGRATIONS) && (
             <Link href="/integracions">Integracions</Link>
           )}
         </nav>
@@ -216,18 +291,28 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
               ))}
             </div>
             <div className="board-actions">
-              <button
-                className="new-note-button"
-                onClick={() => setComposerOpen(true)}
-                type="button"
-              >
-                + Nou post-it
-              </button>
+              {availableNoteTypes.length > 0 && (
+                <button
+                  className="new-note-button"
+                  onClick={() => {
+                    setDraftType(availableNoteTypes[0]);
+                    setActionMessage("");
+                    setComposerOpen(true);
+                  }}
+                  type="button"
+                >
+                  + Nou post-it
+                </button>
+              )}
               <button className="search-button" aria-label="Cercar" type="button">
                 ⌕
               </button>
             </div>
           </div>
+
+          {actionMessage && (
+            <p className="action-message" role="status">{actionMessage}</p>
+          )}
 
           <div className="corkboard">
             <div className="board-label">
@@ -240,15 +325,11 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
                   key={note.id}
                 >
                   <span className="pin" />
-                  {viewer.permissions.moderateBoard && (
+                  {can(viewer, PERMISSIONS.MODERATE_BOARD) && (
                     <button
                       className="archive-note"
                       aria-label={`Arxivar ${note.title}`}
-                      onClick={() =>
-                        setNotes((current) =>
-                          current.filter((item) => item.id !== note.id),
-                        )
-                      }
+                      onClick={() => archiveNote(note.id)}
                       type="button"
                     >
                       ×
@@ -279,7 +360,10 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
                   ].map((option, index) => (
                     <button
                       className={pollChoice === index ? "poll-selected" : ""}
-                      onClick={() => setPollChoice(index)}
+                      disabled={!can(viewer, PERMISSIONS.VOTE_POLL)}
+                      onClick={() =>
+                        can(viewer, PERMISSIONS.VOTE_POLL) && setPollChoice(index)
+                      }
                       key={option}
                       type="button"
                     >
@@ -333,7 +417,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
 
           <section className="platforms card">
             <span className="section-label">LES TEVES PLATAFORMES</span>
-            <Link href={viewer.permissions.connectPlatforms ? "/integracions" : "/alumnat"}>
+            <Link href={can(viewer, PERMISSIONS.MANAGE_INTEGRATIONS) ? "/integracions" : "/alumnat"}>
               <b className="classroom-logo">C</b>
               <p>
                 <strong>Google Classroom</strong>
@@ -341,7 +425,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
               </p>
               <em>↗</em>
             </Link>
-            <Link href={viewer.permissions.connectPlatforms ? "/integracions" : "/alumnat"}>
+            <Link href={can(viewer, PERMISSIONS.MANAGE_INTEGRATIONS) ? "/integracions" : "/alumnat"}>
               <b className="moodle-logo">M</b>
               <p>
                 <strong>Moodle</strong>
@@ -364,6 +448,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
 
       <button
         className="chat-launcher"
+        hidden={!can(viewer, PERMISSIONS.USE_ASSISTANT)}
         onClick={() => setChatOpen((current) => !current)}
         type="button"
       >
@@ -374,7 +459,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
         </div>
       </button>
 
-      {chatOpen && (
+      {can(viewer, PERMISSIONS.USE_ASSISTANT) && chatOpen && (
         <section className="chat-panel" aria-label="Assistent del tauler">
           <header>
             <div>
@@ -414,7 +499,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
         </section>
       )}
 
-      {composerOpen && (
+      {composerOpen && availableNoteTypes.length > 0 && (
         <div className="modal-backdrop" role="presentation">
           <section
             aria-labelledby="new-note-title"
@@ -440,7 +525,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
                   value={draftType}
                   onChange={(event) => setDraftType(event.target.value as NoteType)}
                 >
-                  {filters.slice(1).map((type) => (
+                  {availableNoteTypes.map((type) => (
                     <option key={type}>{type}</option>
                   ))}
                 </select>

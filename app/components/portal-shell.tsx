@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { DemoViewer } from "@/lib/demo-auth";
+import { can, PERMISSIONS } from "@/lib/permissions";
 
 type PortalShellProps = {
   viewer: DemoViewer;
@@ -30,7 +31,7 @@ export default function PortalShell({
           <Link className={active === "board" ? "active" : ""} href="/taulell">
             Tauler
           </Link>
-          {viewer.role === "COORDINATOR" && (
+          {can(viewer, PERMISSIONS.MANAGE_SCHOOL) && (
             <Link
               className={active === "coordination" ? "active" : ""}
               href="/coordinacio"
@@ -38,7 +39,7 @@ export default function PortalShell({
               Coordinació
             </Link>
           )}
-          {["COORDINATOR", "TUTOR", "DELEGATE"].includes(viewer.role) && (
+          {can(viewer, PERMISSIONS.VIEW_GROUP_DASHBOARD) && (
             <Link
               className={active === "tutoring" ? "active" : ""}
               href="/tutoria"
@@ -46,13 +47,15 @@ export default function PortalShell({
               Grup
             </Link>
           )}
-          <Link
-            className={active === "student" ? "active" : ""}
-            href="/alumnat"
-          >
-            El meu espai
-          </Link>
-          {viewer.role === "COORDINATOR" && (
+          {can(viewer, PERMISSIONS.VIEW_OWN_SPACE) && (
+            <Link
+              className={active === "student" ? "active" : ""}
+              href="/alumnat"
+            >
+              El meu espai
+            </Link>
+          )}
+          {can(viewer, PERMISSIONS.MANAGE_INTEGRATIONS) && (
             <Link
               className={active === "integrations" ? "active" : ""}
               href="/integracions"

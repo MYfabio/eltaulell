@@ -1,8 +1,14 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  can,
+  type AppRole,
+  type Permission,
+  permissionsForRole,
+} from "@/lib/permissions";
 
-export type DemoRole = "COORDINATOR" | "TUTOR" | "DELEGATE" | "STUDENT";
+export type DemoRole = AppRole;
 
 export type DemoViewer = {
   id: string;
@@ -15,12 +21,7 @@ export type DemoViewer = {
   school: string;
   schoolSlug: string;
   groupName: string;
-  permissions: {
-    manageSchool: boolean;
-    moderateBoard: boolean;
-    publishActivities: boolean;
-    connectPlatforms: boolean;
-  };
+  permissions: Permission[];
 };
 
 export const DEMO_COOKIE = "eltaulell_demo_session";
@@ -37,12 +38,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     school: "Institut Can Roca",
     schoolSlug: "institut-can-roca",
     groupName: "Tots els grups",
-    permissions: {
-      manageSchool: true,
-      moderateBoard: true,
-      publishActivities: true,
-      connectPlatforms: true,
-    },
+    permissions: permissionsForRole("COORDINATOR"),
   },
   {
     id: "tutor-marta",
@@ -55,12 +51,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     school: "Institut Can Roca",
     schoolSlug: "institut-can-roca",
     groupName: "3r B",
-    permissions: {
-      manageSchool: false,
-      moderateBoard: true,
-      publishActivities: true,
-      connectPlatforms: false,
-    },
+    permissions: permissionsForRole("TUTOR"),
   },
   {
     id: "delegate-laia",
@@ -73,12 +64,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     school: "Institut Can Roca",
     schoolSlug: "institut-can-roca",
     groupName: "3r B",
-    permissions: {
-      manageSchool: false,
-      moderateBoard: false,
-      publishActivities: true,
-      connectPlatforms: false,
-    },
+    permissions: permissionsForRole("DELEGATE"),
   },
   {
     id: "student-marc",
@@ -91,12 +77,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     school: "Institut Can Roca",
     schoolSlug: "institut-can-roca",
     groupName: "3r B",
-    permissions: {
-      manageSchool: false,
-      moderateBoard: false,
-      publishActivities: false,
-      connectPlatforms: false,
-    },
+    permissions: permissionsForRole("STUDENT"),
   },
 ];
 
@@ -150,5 +131,12 @@ export async function requireDemoViewer(roles?: DemoRole[]) {
   const viewer = await getDemoViewer();
   if (!viewer) redirect("/acces");
   if (roles && !roles.includes(viewer.role)) redirect("/taulell");
+  return viewer;
+}
+
+export async function requireDemoPermission(permission: Permission) {
+  const viewer = await getDemoViewer();
+  if (!viewer) redirect("/acces");
+  if (!can(viewer, permission)) redirect("/sense-permis");
   return viewer;
 }

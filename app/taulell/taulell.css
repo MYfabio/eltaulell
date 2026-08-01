@@ -279,6 +279,15 @@
   gap: 8px;
 }
 
+.action-message {
+  margin: 0 0 10px;
+  border-left: 3px solid #d16d35;
+  padding: 8px 11px;
+  background: #fff4e9;
+  color: #7c573e;
+  font-size: 10px;
+}
+
 .new-note-button {
   border: 0;
   border-radius: 18px;
@@ -771,6 +780,10 @@ aside {
   box-shadow: 0 8px 25px rgba(25, 47, 80, 0.3);
   cursor: pointer;
   gap: 10px;
+}
+
+.chat-launcher[hidden] {
+  display: none;
 }
 
 .chat-launcher > span {
