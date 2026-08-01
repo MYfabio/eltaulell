@@ -3,7 +3,15 @@ import {
   createDemoSession,
   DEMO_COOKIE,
   DEMO_VIEWERS,
+  type DemoRole,
 } from "@/lib/demo-auth";
+
+const ROLE_HOME: Record<DemoRole, string> = {
+  COORDINATOR: "/coordinacio",
+  TUTOR: "/tutoria",
+  DELEGATE: "/tutoria",
+  STUDENT: "/alumnat",
+};
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -16,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   const response = new NextResponse(null, {
     status: 303,
-    headers: { Location: "/taulell" },
+    headers: { Location: ROLE_HOME[viewer.role] },
   });
   response.cookies.set(DEMO_COOKIE, createDemoSession(viewer.id), {
     httpOnly: true,
