@@ -1,21 +1,23 @@
 import Link from "next/link";
 import PortalShell from "@/app/components/portal-shell";
-import { DEMO_VIEWERS, requireDemoPermission } from "@/lib/demo-auth";
-import {
-  PERMISSIONS,
-  PERMISSION_LABELS,
-} from "@/lib/permissions";
+import AdministrationClient from "@/app/coordinacio/administration-client";
+import { getAdminSnapshot } from "@/lib/admin";
+import { requireDemoPermission } from "@/lib/demo-auth";
+import { PERMISSIONS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoordinationPage() {
   const viewer = await requireDemoPermission(PERMISSIONS.MANAGE_SCHOOL);
+  const snapshot = await getAdminSnapshot(viewer);
+  const activePeople = snapshot.people.filter((person) => person.status === "ACTIVE").length;
+  const pendingPeople = snapshot.people.filter((person) => person.status === "INVITED").length;
 
   return (
     <PortalShell
       active="coordination"
-      description="Gestiona el centre, els grups, les persones i els permisos des d’un únic espai."
-      eyebrow={`${viewer.school.toUpperCase()} · CURS 2026–2027`}
+      description="Gestiona les persones, els perfils i els grups del centre amb permisos verificats al servidor."
+      eyebrow={`${snapshot.school.name.toUpperCase()} · CURS 2026-2027`}
       title="Coordinació del centre"
       viewer={viewer}
     >
@@ -23,97 +25,49 @@ export default async function CoordinationPage() {
         <article className="portal-panel">
           <p className="panel-label">PERSONES ACTIVES</p>
           <div className="metric">
-            <strong>486</strong>
-            <span>+18 aquest curs</span>
+            <strong>{activePeople}</strong>
+            <span>{pendingPeople ? `${pendingPeople} pendents` : "Tothom al dia"}</span>
           </div>
-          <p>42 tutors i docents · 432 alumnes · 12 coordinadors i suport.</p>
+          <p>Coordinació, tutories, delegats i alumnat registrats en aquest centre.</p>
         </article>
 
         <article className="portal-panel">
           <p className="panel-label">GRUPS</p>
           <div className="metric">
-            <strong>21</strong>
-            <span>Tots operatius</span>
+            <strong>{snapshot.groups.length}</strong>
+            <span>Amb tauler propi</span>
           </div>
-          <p>ESO, Batxillerat i cicles. Cada grup té el seu tauler i calendari.</p>
+          <p>Cada grup manté les seves persones, el seu tauler i el seu calendari separats.</p>
         </article>
 
         <article className="portal-panel">
-          <p className="panel-label">CENTRES</p>
+          <p className="panel-label">ÀMBIT D'ADMINISTRACIÓ</p>
           <div className="metric">
             <strong>1</strong>
-            <span>Preparat per créixer</span>
+            <span>{snapshot.school.name}</span>
           </div>
-          <p>El model permet afegir centres nous mantenint les dades separades.</p>
+          <p>La coordinació només pot administrar les dades del centre on està assignada.</p>
         </article>
 
-        <article className="portal-panel wide">
-          <p className="panel-label">USUARIS DE PROVA</p>
-          <h2>Perfils i permisos</h2>
-          <table className="portal-table">
-            <thead>
-              <tr>
-                <th>Persona</th>
-                <th>Rol</th>
-                <th>Grup</th>
-                <th>Permisos principals</th>
-                <th>Estat</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DEMO_VIEWERS.map((person) => (
-                <tr key={person.id}>
-                  <td>
-                    <strong>{person.name}</strong>
-                    <br />
-                    <small>{person.email}</small>
-                  </td>
-                  <td>{person.roleLabel}</td>
-                  <td>{person.groupName}</td>
-                  <td>
-                    <div className="permission-chips">
-                      {person.permissions.slice(0, 3).map((permission) => (
-                        <span key={permission}>{PERMISSION_LABELS[permission]}</span>
-                      ))}
-                      {person.permissions.length > 3 && (
-                        <span>+{person.permissions.length - 3}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td><span className="status-pill">Actiu</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
+        <AdministrationClient initialData={snapshot} />
 
         <article className="portal-panel">
           <p className="panel-label">ACCIONS RÀPIDES</p>
-          <h2>Administració</h2>
+          <h2>Altres espais</h2>
           <div className="action-list">
-            <button disabled type="button">Convidar persones · amb Google</button>
             <Link href="/tutoria">Revisar els grups</Link>
             <Link href="/integracions">Configurar integracions</Link>
+            <Link href="/taulell">Obrir el tauler</Link>
           </div>
         </article>
 
-        <article className="portal-panel full">
-          <p className="panel-label">ARQUITECTURA MULTI-CENTRE</p>
-          <h2>Dades separades i permisos per pertinença</h2>
-          <p>
-            Una mateixa persona pot pertànyer a més d’un centre amb rols
-            diferents. Les consultes, grups, taulers i integracions sempre
-            queden vinculats al centre corresponent.
-          </p>
-        </article>
-
-        <article className="portal-panel full">
-          <p className="panel-label">CONTROL D’ACCÉS</p>
-          <h2>Els permisos es comproven dues vegades</h2>
+        <article className="portal-panel wide">
+          <p className="panel-label">SEGURETAT I ESCALABILITAT</p>
+          <h2>Permisos vinculats al centre i al grup</h2>
           <div className="security-points">
-            <p><strong>Interfície</strong><span>Cada perfil només veu les accions que pot utilitzar.</span></p>
-            <p><strong>Servidor</strong><span>Les rutes i operacions rebutgen qualsevol accés no autoritzat.</span></p>
-            <p><strong>Centre</strong><span>El rol sempre queda vinculat a la pertinença del centre corresponent.</span></p>
+            <p><strong>Centre</strong><span>Cap canvi pot afectar persones o grups d'un altre centre.</span></p>
+            <p><strong>Grup</strong><span>Tutories, delegats i alumnat queden assignats al seu grup.</span></p>
+            <p><strong>Auditoria</strong><span>Les altes i els canvis de perfil queden registrats.</span></p>
           </div>
         </article>
       </section>
