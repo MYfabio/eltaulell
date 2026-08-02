@@ -2,14 +2,15 @@ import { getAttachment } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const viewer = await getDemoViewer();
   if (!viewer) return new Response("Cal iniciar sessió.", { status: 401 });
 
   const { id } = await params;
-  const attachment = await getAttachment(viewer, id);
+  const groupId = new URL(request.url).searchParams.get("groupId");
+  const attachment = await getAttachment(viewer, id, groupId);
   if (!attachment) return new Response("Fitxer no trobat.", { status: 404 });
 
   return new Response(Buffer.from(attachment.content), {

@@ -18,14 +18,19 @@ const pollSchema = z.object({
   closesAt: z.string().datetime().nullable().optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   const viewer = await getDemoViewer();
   if (!viewer) {
     return NextResponse.json({ error: "Cal iniciar sessió." }, { status: 401 });
   }
 
+  const groupId = new URL(request.url).searchParams.get("groupId");
   return NextResponse.json({
-    polls: await listPolls(viewer, can(viewer, PERMISSIONS.MANAGE_POLL_RESULTS)),
+    polls: await listPolls(
+      viewer,
+      can(viewer, PERMISSIONS.MANAGE_POLL_RESULTS),
+      groupId,
+    ),
   });
 }
 
@@ -42,6 +47,8 @@ export async function POST(request: Request) {
     );
   }
 
+  const groupId = new URL(request.url).searchParams.get("groupId");
+
   const parsed = pollSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
@@ -52,10 +59,14 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     {
-      poll: await createPoll(viewer, {
-        ...parsed.data,
-        closesAt: parsed.data.closesAt ?? null,
-      }),
+      poll: await createPoll(
+        viewer,
+        {
+          ...parsed.data,
+          closesAt: parsed.data.closesAt ?? null,
+        },
+        groupId,
+      ),
     },
     { status: 201 },
   );

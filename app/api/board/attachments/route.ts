@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAttachment, listAttachments } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
+import { ObjectStorageConfigurationError } from "@/lib/object-storage";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -12,13 +13,14 @@ const ALLOWED_TYPES = new Set([
   "application/pdf",
 ]);
 
-export async function GET() {
+export async function GET(request: Request) {
   const viewer = await getDemoViewer();
   if (!viewer) {
     return NextResponse.json({ error: "Cal iniciar sessió." }, { status: 401 });
   }
 
-  return NextResponse.json({ attachments: await listAttachments(viewer) });
+  const groupId = new URL(request.url).searchParams.get("groupId");
+  return NextResponse.json({ attachments: await listAttachments(viewer, groupId) });
 }
 
 export async function POST(request: Request) {
@@ -35,6 +37,7 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData().catch(() => null);
+  const groupId = new URL(request.url).searchParams.get("groupId");
   const file = formData?.get("file");
   const caption = String(formData?.get("caption") ?? "").trim().slice(0, 120);
 
@@ -52,13 +55,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const attachment = await createAttachment(viewer, {
-    fileName: file.name.slice(0, 140),
-    mimeType: file.type,
-    size: file.size,
-    caption,
-    content: new Uint8Array(await file.arrayBuffer()),
-  });
+  let attachment: Awaited<ReturnType<typeof createAttachment>>;
+  try {
+    attachment = await createAttachment(
+      viewer,
+      {
+        fileName: file.name.slice(0, 140),
+        mimeType: file.type,
+        size: file.size,
+        caption,
+        content: new Uint8Array(await file.arrayBuffer()),
+      },
+      groupId,
+    );
+  } catch (error) {
+    if (error instanceof ObjectStorageConfigurationError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+    throw error;
+  }
 
   if (!attachment) {
     return NextResponse.json(
@@ -70,7 +85,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       attachment,
-      storageMode: "postgresql",
+      storageMode: attachment.storageMode,
     },
     {
       status: 201,

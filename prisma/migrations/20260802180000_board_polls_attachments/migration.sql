@@ -40,11 +40,14 @@ CREATE TABLE "BoardAttachment" (
   "mimeType" TEXT NOT NULL,
   "sizeBytes" INTEGER NOT NULL,
   "caption" TEXT,
-  "content" BYTEA NOT NULL,
+  "storageKey" TEXT,
+  "storageProvider" TEXT NOT NULL DEFAULT 'POSTGRESQL',
+  "content" BYTEA,
   "uploadedById" TEXT,
   "uploadedByRole" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "BoardAttachment_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "BoardAttachment_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "BoardAttachment_storage_check" CHECK ("storageKey" IS NOT NULL OR "content" IS NOT NULL)
 );
 
 CREATE INDEX "BoardPoll_boardId_status_createdAt_idx" ON "BoardPoll"("boardId", "status", "createdAt");
@@ -55,6 +58,7 @@ CREATE INDEX "BoardPollOption_pollId_idx" ON "BoardPollOption"("pollId");
 CREATE UNIQUE INDEX "BoardPollVote_pollId_voterKey_key" ON "BoardPollVote"("pollId", "voterKey");
 CREATE INDEX "BoardPollVote_optionId_idx" ON "BoardPollVote"("optionId");
 CREATE INDEX "BoardPollVote_voterId_idx" ON "BoardPollVote"("voterId");
+CREATE UNIQUE INDEX "BoardAttachment_storageKey_key" ON "BoardAttachment"("storageKey");
 CREATE INDEX "BoardAttachment_boardId_createdAt_idx" ON "BoardAttachment"("boardId", "createdAt");
 CREATE INDEX "BoardAttachment_uploadedById_idx" ON "BoardAttachment"("uploadedById");
 

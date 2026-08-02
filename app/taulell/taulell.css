@@ -245,6 +245,44 @@
   gap: 22px;
 }
 
+.board-switcher {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid #dde3ea;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.board-switcher > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #667085;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.board-switcher div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.board-switcher a {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--navy);
+  background: #edf1f5;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.board-switcher a.active {
+  color: white;
+  background: var(--navy);
+}
+
 .board-tools {
   display: flex;
   justify-content: space-between;
@@ -722,6 +760,17 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
+}
+
+.board-extras-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 20px;
+  border: 1px dashed rgba(26, 48, 73, 0.28);
+  border-radius: 16px;
+  color: #5d6877;
+  background: rgba(255, 255, 255, 0.58);
+  text-align: center;
 }
 
 .managed-poll-card,
@@ -1739,6 +1788,18 @@ aside {
 
   .workspace {
     padding: 0 12px 80px;
+  }
+
+  .board-switcher {
+    overflow-x: auto;
+  }
+
+  .board-switcher div {
+    flex-wrap: nowrap;
+  }
+
+  .board-switcher a {
+    flex: 0 0 auto;
   }
 
   .board-tools {

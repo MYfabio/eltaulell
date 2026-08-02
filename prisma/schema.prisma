@@ -235,7 +235,9 @@ model BoardAttachment {
   mimeType       String
   sizeBytes      Int
   caption        String?
-  content        Bytes
+  storageKey     String?  @unique
+  storageProvider String  @default("POSTGRESQL")
+  content        Bytes?
   uploadedById   String?
   uploadedByRole String
   createdAt      DateTime @default(now())

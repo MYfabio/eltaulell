@@ -30,11 +30,12 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const groupId = new URL(request.url).searchParams.get("groupId");
   if (!id) {
     return NextResponse.json({ error: "Falta l'enquesta." }, { status: 400 });
   }
 
-  const result = await managePoll(viewer, id, parsed.data.action);
+  const result = await managePoll(viewer, id, parsed.data.action, groupId);
   if ("error" in result) {
     return NextResponse.json(
       {

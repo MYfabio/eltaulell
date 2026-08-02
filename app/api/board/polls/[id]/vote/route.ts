@@ -26,11 +26,12 @@ export async function POST(
 
   const parsed = voteSchema.safeParse(await request.json().catch(() => null));
   const { id } = await params;
+  const groupId = new URL(request.url).searchParams.get("groupId");
   if (!id || !parsed.success) {
     return NextResponse.json({ error: "El vot no és vàlid." }, { status: 400 });
   }
 
-  const result = await votePoll(viewer, id, parsed.data.optionId);
+  const result = await votePoll(viewer, id, parsed.data.optionId, groupId);
   if ("error" in result && result.error) {
     const message = {
       NOT_FOUND: "No s'ha trobat l'enquesta d'aquest grup.",

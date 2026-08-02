@@ -36,22 +36,7 @@ type BoardAttachment = {
   uploadedByRole: string;
 };
 
-const initialPolls: BoardPoll[] = [
-  {
-    id: "poll-tutoria-1",
-    question: "Quina activitat preferiu per a la tutoria?",
-    options: [
-      { id: "poll-tutoria-1-a", label: "Dinàmica de grup", votes: 9 },
-      { id: "poll-tutoria-1-b", label: "Debat sobre xarxes", votes: 12 },
-      { id: "poll-tutoria-1-c", label: "Sortida al pati", votes: 4 },
-    ],
-    anonymous: true,
-    closesAt: null,
-    status: "OPEN",
-    createdBy: "Marta Puig",
-    createdByRole: "Tutora",
-  },
-];
+const initialPolls: BoardPoll[] = [];
 
 const statusLabels: Record<PollStatus, string> = {
   PENDING_APPROVAL: "Pendent de validació",
@@ -65,7 +50,13 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
+export default function BoardExtras({
+  groupId,
+  viewer,
+}: {
+  groupId: string;
+  viewer: DemoViewer;
+}) {
   const [polls, setPolls] = useState(initialPolls);
   const [attachments, setAttachments] = useState<BoardAttachment[]>([]);
   const [pollModalOpen, setPollModalOpen] = useState(false);
@@ -84,14 +75,19 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
   const canManagePolls = can(viewer, PERMISSIONS.MANAGE_POLL_RESULTS);
   const canAttach = can(viewer, PERMISSIONS.CREATE_ATTACHMENT);
   const canDeleteAttachments = can(viewer, PERMISSIONS.DELETE_ATTACHMENT);
+  const groupQuery = `?groupId=${encodeURIComponent(groupId)}`;
+
+  function boardApiUrl(path: string) {
+    return `${path}${groupQuery}`;
+  }
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadBoardExtras() {
       const [pollResponse, attachmentResponse] = await Promise.all([
-        fetch("/api/board/polls", { cache: "no-store" }),
-        fetch("/api/board/attachments", { cache: "no-store" }),
+        fetch(boardApiUrl("/api/board/polls"), { cache: "no-store" }),
+        fetch(boardApiUrl("/api/board/attachments"), { cache: "no-store" }),
       ]);
       const pollResult = (await pollResponse.json().catch(() => null)) as
         | { polls?: BoardPoll[] }
@@ -113,7 +109,7 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [groupQuery]);
 
   const visiblePolls = useMemo(
     () =>
@@ -149,7 +145,7 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
 
     setBusy(true);
     setMessage("");
-    const response = await fetch("/api/board/polls", {
+    const response = await fetch(boardApiUrl("/api/board/polls"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -187,7 +183,7 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
     if (!poll || poll.status !== "OPEN" || poll.voterChoice) return;
 
     setMessage("");
-    const response = await fetch(`/api/board/polls/${encodeURIComponent(pollId)}/vote`, {
+    const response = await fetch(boardApiUrl(`/api/board/polls/${encodeURIComponent(pollId)}/vote`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ optionId }),
@@ -223,7 +219,7 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
   ) {
     setBusy(true);
     setMessage("");
-    const response = await fetch(`/api/board/polls/${encodeURIComponent(pollId)}`, {
+    const response = await fetch(boardApiUrl(`/api/board/polls/${encodeURIComponent(pollId)}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
@@ -275,7 +271,7 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
     formData.set("file", attachmentFile);
     formData.set("caption", attachmentCaption);
 
-    const response = await fetch("/api/board/attachments", {
+    const response = await fetch(boardApiUrl("/api/board/attachments"), {
       method: "POST",
       body: formData,
     });
@@ -299,7 +295,7 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
   async function deleteAttachment(id: string) {
     setBusy(true);
     setMessage("");
-    const response = await fetch(`/api/board/attachments/${encodeURIComponent(id)}`, {
+    const response = await fetch(boardApiUrl(`/api/board/attachments/${encodeURIComponent(id)}`), {
       method: "DELETE",
     });
     const result = (await response.json().catch(() => null)) as
@@ -343,6 +339,11 @@ export default function BoardExtras({ viewer }: { viewer: DemoViewer }) {
       {message && <p className="extras-message" role="status">{message}</p>}
 
       <div className="board-extras-grid">
+        {!visiblePolls.length && !attachments.length && (
+          <p className="board-extras-empty">
+            Encara no hi ha enquestes ni fitxers en aquest taulell.
+          </p>
+        )}
         {visiblePolls.map((poll) => {
           const totalVotes = poll.options.reduce((total, option) => total + option.votes, 0);
           const showResults =

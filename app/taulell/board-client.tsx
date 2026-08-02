@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
+import type { BoardChoice } from "@/lib/board-store";
 import type { DemoViewer } from "@/lib/demo-auth";
 import {
   can,
@@ -103,7 +104,15 @@ const noteKindByType: Record<NoteType, PostKind> = {
   Materials: "MATERIAL",
 };
 
-export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
+export default function BoardClient({
+  boards,
+  selectedBoard,
+  viewer,
+}: {
+  boards: BoardChoice[];
+  selectedBoard: BoardChoice;
+  viewer: DemoViewer;
+}) {
   const [notes, setNotes] = useState(initialNotes);
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tot");
   const [chatOpen, setChatOpen] = useState(false);
@@ -365,6 +374,22 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
 
       <div className="workspace">
         <section className="board-wrap">
+          {boards.length > 1 && (
+            <nav aria-label="Seleccionar el tauler del grup" className="board-switcher">
+              <span>TAULERS DEL CENTRE</span>
+              <div>
+                {boards.map((board) => (
+                  <Link
+                    className={board.groupId === selectedBoard.groupId ? "active" : ""}
+                    href={`/taulell?groupId=${encodeURIComponent(board.groupId)}`}
+                    key={board.boardId}
+                  >
+                    {board.groupName}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          )}
           <div className="board-tools">
             <div className="filters" aria-label="Filtrar publicacions">
               {filters.map((filter) => (
@@ -420,9 +445,11 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
 
           <div className="corkboard">
             <div className="board-label">
-              <span>📌</span> TAULER DE {viewer.groupName.toUpperCase()}
+              <span>📌</span> TAULER DE {selectedBoard.groupName.toUpperCase()}
             </div>
-            {activeFilter === "Tot" && <BoardExtras viewer={viewer} />}
+            {activeFilter === "Tot" && (
+              <BoardExtras groupId={selectedBoard.groupId} viewer={viewer} />
+            )}
             <div className="notes-grid" aria-live="polite">
               {visibleNotes.map((note, index) => (
                 <article

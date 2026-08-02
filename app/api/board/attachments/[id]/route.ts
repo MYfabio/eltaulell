@@ -4,7 +4,7 @@ import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const viewer = await getDemoViewer();
@@ -20,11 +20,12 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const groupId = new URL(request.url).searchParams.get("groupId");
   if (!id) {
     return NextResponse.json({ error: "Falta el fitxer." }, { status: 400 });
   }
 
-  if (!(await deleteAttachment(viewer, id))) {
+  if (!(await deleteAttachment(viewer, id, groupId))) {
     return NextResponse.json(
       { error: "No s'ha trobat el fitxer d'aquest grup." },
       { status: 404 },

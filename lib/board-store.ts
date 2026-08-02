@@ -1,9 +1,16 @@
 import "server-only";
 
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { ensureDemoSchoolData } from "@/lib/admin";
 import { db } from "@/lib/db";
 import type { DemoViewer } from "@/lib/demo-auth";
+import {
+  deleteObject,
+  getObject,
+  ObjectStorageConfigurationError,
+  objectStorageConfigured,
+  putObject,
+} from "@/lib/object-storage";
 
 export type StoredPollStatus =
   | "PENDING_APPROVAL"
@@ -34,38 +41,100 @@ type AttachmentRow = {
   mimeType: string;
   sizeBytes: number;
   caption: string | null;
+  storageProvider: string;
   uploadedByRole: string;
   uploadedBy: { name: string } | null;
 };
 
-async function boardContext(viewer: DemoViewer) {
-  const groupName = viewer.role === "COORDINATOR" ? "3r B" : viewer.groupName;
-  async function findContext() {
-    const [board, actor] = await Promise.all([
-      db.board.findFirst({
-        where: {
-          group: {
-            name: groupName,
-            school: { slug: viewer.schoolSlug },
-          },
-        },
-        select: { id: true },
-      }),
-      db.user.findUnique({
-        where: { email: viewer.email.toLowerCase() },
-        select: { id: true },
-      }),
-    ]);
-    return board && actor ? { boardId: board.id, actorId: actor.id } : null;
+export type BoardChoice = {
+  boardId: string;
+  groupId: string;
+  groupName: string;
+};
+
+async function accessContext(viewer: DemoViewer) {
+  async function findAccess() {
+    const actor = await db.user.findUnique({
+      where: { email: viewer.email.toLowerCase() },
+      select: { id: true },
+    });
+    if (!actor) return null;
+
+    const membership = await db.schoolMembership.findFirst({
+      where: {
+        userId: actor.id,
+        status: "ACTIVE",
+        school: { slug: viewer.schoolSlug },
+      },
+      select: { id: true, role: true, schoolId: true },
+    });
+    return membership ? { actorId: actor.id, membership } : null;
   }
 
-  const existing = await findContext();
+  const existing = await findAccess();
   if (existing) return existing;
-
   await ensureDemoSchoolData(viewer);
-  const prepared = await findContext();
-  if (!prepared) throw new Error("No s'ha pogut preparar el taulell del grup.");
+  const prepared = await findAccess();
+  if (!prepared) throw new Error("No s'ha pogut preparar l'accés al centre.");
   return prepared;
+}
+
+async function boardChoicesForMembership(
+  viewer: DemoViewer,
+  membership: { id: string; role: string; schoolId: string },
+): Promise<BoardChoice[]> {
+  if (viewer.role === "COORDINATOR" && membership.role === "COORDINATOR") {
+    const boards = await db.board.findMany({
+      where: { group: { schoolId: membership.schoolId } },
+      select: { id: true, group: { select: { id: true, name: true } } },
+      orderBy: { group: { name: "asc" } },
+    });
+    return boards.map(
+      (board: { id: string; group: { id: string; name: string } }) => ({
+        boardId: board.id,
+        groupId: board.group.id,
+        groupName: board.group.name,
+      }),
+    );
+  }
+
+  const assignments = await db.groupMembership.findMany({
+    where: { schoolMembershipId: membership.id },
+    select: {
+      group: {
+        select: { id: true, name: true, board: { select: { id: true } } },
+      },
+    },
+    orderBy: { group: { name: "asc" } },
+  });
+  return assignments.flatMap(
+    (assignment: {
+      group: { id: string; name: string; board: { id: string } | null };
+    }) =>
+      assignment.group.board
+        ? [
+            {
+              boardId: assignment.group.board.id,
+              groupId: assignment.group.id,
+              groupName: assignment.group.name,
+            },
+          ]
+        : [],
+  );
+}
+
+export async function listBoardChoices(viewer: DemoViewer): Promise<BoardChoice[]> {
+  const { membership } = await accessContext(viewer);
+  return boardChoicesForMembership(viewer, membership);
+}
+
+async function boardContext(viewer: DemoViewer, requestedGroupId?: string | null) {
+  const { actorId, membership } = await accessContext(viewer);
+  const boards = await boardChoicesForMembership(viewer, membership);
+  const selected =
+    boards.find((board) => board.groupId === requestedGroupId) ?? boards[0];
+  if (!selected) throw new Error("No hi ha cap taulell assignat a aquest perfil.");
+  return { ...selected, actorId };
 }
 
 function anonymousVoterKey(viewer: DemoViewer) {
@@ -111,47 +180,12 @@ function serializePoll(poll: PollRow, includeResults: boolean) {
   };
 }
 
-async function ensureInitialPoll(boardId: string) {
-  const tutor = await db.user.findUnique({
-    where: { id: "tutor-marta" },
-    select: { id: true },
-  });
-  const pollId = `demo-poll-${boardId}`;
-  const poll = await db.boardPoll.upsert({
-    where: { id: pollId },
-    update: {},
-    create: {
-      id: pollId,
-      boardId,
-      question: "Quina activitat preferiu per a la tutoria?",
-      anonymous: true,
-      status: "OPEN",
-      createdById: tutor?.id,
-      createdByRole: "Tutora",
-      options: {
-        create: [
-          { label: "Dinàmica de grup", position: 0 },
-          { label: "Debat sobre xarxes", position: 1 },
-          { label: "Sortida al pati", position: 2 },
-        ],
-      },
-    },
-    include: { options: { orderBy: { position: "asc" } } },
-  });
-
-  const seedVotes = [9, 12, 4].flatMap((count, optionIndex) =>
-    Array.from({ length: count }, (_, voteIndex) => ({
-      pollId: poll.id,
-      optionId: poll.options[optionIndex].id,
-      voterKey: `demo-${optionIndex}-${voteIndex}`,
-    })),
-  );
-  await db.boardPollVote.createMany({ data: seedVotes, skipDuplicates: true });
-}
-
-export async function listPolls(viewer: DemoViewer, canManage: boolean) {
-  const { boardId, actorId } = await boardContext(viewer);
-  await ensureInitialPoll(boardId);
+export async function listPolls(
+  viewer: DemoViewer,
+  canManage: boolean,
+  groupId?: string | null,
+) {
+  const { boardId, actorId } = await boardContext(viewer, groupId);
   const voterKey = anonymousVoterKey(viewer);
   const polls = await db.boardPoll.findMany({
     where: {
@@ -182,8 +216,9 @@ export async function createPoll(
     anonymous: boolean;
     closesAt: string | null;
   },
+  groupId?: string | null,
 ) {
-  const { boardId, actorId } = await boardContext(viewer);
+  const { boardId, actorId } = await boardContext(viewer, groupId);
   const voterKey = anonymousVoterKey(viewer);
   const poll = await db.boardPoll.create({
     data: {
@@ -223,8 +258,9 @@ export async function managePoll(
   viewer: DemoViewer,
   pollId: string,
   action: "APPROVE" | "CLOSE" | "PUBLISH" | "DELETE",
+  groupId?: string | null,
 ) {
-  const { boardId, actorId } = await boardContext(viewer);
+  const { boardId, actorId } = await boardContext(viewer, groupId);
 
   if (action === "DELETE") {
     const deleted = await db.boardPoll.deleteMany({ where: { id: pollId, boardId } });
@@ -257,8 +293,9 @@ export async function votePoll(
   viewer: DemoViewer,
   pollId: string,
   optionId: string,
+  groupId?: string | null,
 ) {
-  const { boardId, actorId } = await boardContext(viewer);
+  const { boardId, actorId } = await boardContext(viewer, groupId);
   const poll = await db.boardPoll.findFirst({
     where: { id: pollId, boardId },
     select: {
@@ -305,16 +342,19 @@ export async function votePoll(
   return { accepted: true, optionId } as const;
 }
 
-function serializeAttachment(attachment: AttachmentRow) {
+function serializeAttachment(attachment: AttachmentRow, groupId: string) {
   return {
     id: attachment.id,
     fileName: attachment.fileName,
     mimeType: attachment.mimeType,
     size: attachment.sizeBytes,
     caption: attachment.caption ?? "",
-    url: `/api/board/attachments/${encodeURIComponent(attachment.id)}/content`,
+    url:
+      `/api/board/attachments/${encodeURIComponent(attachment.id)}/content` +
+      `?groupId=${encodeURIComponent(groupId)}`,
     uploadedBy: attachment.uploadedBy?.name ?? "Usuari eliminat",
     uploadedByRole: attachment.uploadedByRole,
+    storageMode: attachment.storageProvider,
   };
 }
 
@@ -324,18 +364,21 @@ const attachmentSelect = {
   mimeType: true,
   sizeBytes: true,
   caption: true,
+  storageProvider: true,
   uploadedByRole: true,
   uploadedBy: { select: { name: true } },
 };
 
-export async function listAttachments(viewer: DemoViewer) {
-  const { boardId } = await boardContext(viewer);
+export async function listAttachments(viewer: DemoViewer, groupId?: string | null) {
+  const { boardId, groupId: selectedGroupId } = await boardContext(viewer, groupId);
   const attachments = await db.boardAttachment.findMany({
     where: { boardId },
     select: attachmentSelect,
     orderBy: { createdAt: "desc" },
   });
-  return attachments.map((attachment: AttachmentRow) => serializeAttachment(attachment));
+  return attachments.map((attachment: AttachmentRow) =>
+    serializeAttachment(attachment, selectedGroupId),
+  );
 }
 
 export async function createAttachment(
@@ -347,43 +390,97 @@ export async function createAttachment(
     caption: string;
     content: Uint8Array;
   },
+  groupId?: string | null,
 ) {
-  const { boardId, actorId } = await boardContext(viewer);
+  const { boardId, actorId, groupId: selectedGroupId } = await boardContext(
+    viewer,
+    groupId,
+  );
   const count = await db.boardAttachment.count({ where: { boardId } });
   if (count >= 30) return null;
 
-  const attachment = await db.boardAttachment.create({
-    data: {
-      boardId,
-      fileName: data.fileName,
-      mimeType: data.mimeType,
-      sizeBytes: data.size,
-      caption: data.caption || null,
-      content: Buffer.from(data.content),
-      uploadedById: actorId,
-      uploadedByRole: viewer.roleLabel,
-    },
-    select: attachmentSelect,
-  });
-  return serializeAttachment(attachment as AttachmentRow);
+  const useBucket = objectStorageConfigured();
+  if (!useBucket && process.env.NODE_ENV === "production") {
+    throw new ObjectStorageConfigurationError(
+      "Cal connectar un Railway Bucket abans de pujar fitxers.",
+    );
+  }
+  const storageKey = useBucket
+    ? `boards/${boardId}/${randomUUID()}`
+    : null;
+  if (storageKey) await putObject(storageKey, data.content, data.mimeType);
+
+  try {
+    const attachment = await db.boardAttachment.create({
+      data: {
+        boardId,
+        fileName: data.fileName,
+        mimeType: data.mimeType,
+        sizeBytes: data.size,
+        caption: data.caption || null,
+        storageKey,
+        storageProvider: storageKey ? "RAILWAY_BUCKET" : "POSTGRESQL",
+        content: storageKey ? null : Buffer.from(data.content),
+        uploadedById: actorId,
+        uploadedByRole: viewer.roleLabel,
+      },
+      select: attachmentSelect,
+    });
+    return serializeAttachment(attachment as AttachmentRow, selectedGroupId);
+  } catch (error) {
+    if (storageKey) await deleteObject(storageKey).catch(() => undefined);
+    throw error;
+  }
 }
 
-export async function getAttachment(viewer: DemoViewer, id: string) {
-  const { boardId } = await boardContext(viewer);
-  return db.boardAttachment.findFirst({
+export async function getAttachment(
+  viewer: DemoViewer,
+  id: string,
+  groupId?: string | null,
+) {
+  const { boardId } = await boardContext(viewer, groupId);
+  const attachment = await db.boardAttachment.findFirst({
     where: { id, boardId },
     select: {
       id: true,
       fileName: true,
       mimeType: true,
       sizeBytes: true,
+      storageKey: true,
       content: true,
     },
   });
+  if (!attachment) return null;
+  if (attachment.storageKey && !objectStorageConfigured()) {
+    throw new Error("El bucket de fitxers no està configurat.");
+  }
+
+  const content = attachment.storageKey
+    ? await getObject(attachment.storageKey)
+    : attachment.content
+      ? new Uint8Array(attachment.content)
+      : null;
+  if (!content) return null;
+  return { ...attachment, content };
 }
 
-export async function deleteAttachment(viewer: DemoViewer, id: string) {
-  const { boardId } = await boardContext(viewer);
+export async function deleteAttachment(
+  viewer: DemoViewer,
+  id: string,
+  groupId?: string | null,
+) {
+  const { boardId } = await boardContext(viewer, groupId);
+  const attachment = await db.boardAttachment.findFirst({
+    where: { id, boardId },
+    select: { storageKey: true },
+  });
+  if (!attachment) return false;
+  if (attachment.storageKey) {
+    if (!objectStorageConfigured()) {
+      throw new Error("El bucket de fitxers no està configurat.");
+    }
+    await deleteObject(attachment.storageKey);
+  }
   const deleted = await db.boardAttachment.deleteMany({ where: { id, boardId } });
   return deleted.count > 0;
 }
