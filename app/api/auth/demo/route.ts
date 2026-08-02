@@ -8,9 +8,9 @@ import {
 
 const ROLE_HOME: Record<DemoRole, string> = {
   COORDINATOR: "/coordinacio",
-  TUTOR: "/tutoria",
-  DELEGATE: "/tutoria",
-  STUDENT: "/alumnat",
+  TUTOR: "/taulell",
+  DELEGATE: "/taulell",
+  STUDENT: "/taulell",
 };
 
 export async function POST(request: NextRequest) {

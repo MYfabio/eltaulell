@@ -81,6 +81,13 @@ const noteStyles: Record<NoteType, { color: NoteColor; icon: string }> = {
   Materials: { color: "green", icon: "📚" },
 };
 
+const noteActionLabels: Record<NoteType, string> = {
+  Avisos: "Avís",
+  Tasques: "Tasca",
+  Activitats: "Activitat",
+  Materials: "Material",
+};
+
 const noteTypePermissions: Record<NoteType, Permission> = {
   Avisos: PERMISSIONS.CREATE_NOTICE,
   Tasques: PERMISSIONS.CREATE_TASK,
@@ -106,6 +113,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
   const [draftType, setDraftType] = useState<NoteType>("Avisos");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState("");
 
   const availableNoteTypes = useMemo(
@@ -125,6 +133,29 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
         : notes.filter((note) => note.type === activeFilter),
     [activeFilter, notes],
   );
+
+  function openNewNote(type: NoteType) {
+    setEditingNoteId(null);
+    setDraftType(type);
+    setDraftTitle("");
+    setDraftBody("");
+    setActionMessage("");
+    setComposerOpen(true);
+  }
+
+  function openEditNote(note: Note) {
+    setEditingNoteId(note.id);
+    setDraftType(note.type);
+    setDraftTitle(note.title);
+    setDraftBody(note.body);
+    setActionMessage("");
+    setComposerOpen(true);
+  }
+
+  function closeComposer() {
+    setComposerOpen(false);
+    setEditingNoteId(null);
+  }
 
   function askBoard() {
     if (!query.trim()) return;
@@ -190,6 +221,63 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
     setDraftTitle("");
     setDraftBody("");
     setComposerOpen(false);
+  }
+
+  async function updateNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingNoteId || !draftTitle.trim() || !draftBody.trim()) return;
+
+    if (
+      !can(viewer, PERMISSIONS.MODERATE_BOARD) ||
+      !can(viewer, noteTypePermissions[draftType])
+    ) {
+      setActionMessage("Aquest perfil no pot editar el tauler.");
+      return;
+    }
+
+    setActionMessage("");
+    const response = await fetch(
+      `/api/board/posts/${encodeURIComponent(editingNoteId)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: noteKindByType[draftType],
+          title: draftTitle,
+          body: draftBody,
+        }),
+      },
+    );
+    const result = (await response.json().catch(() => null)) as
+      | { error?: string; post?: { id: string; meta: string } }
+      | null;
+
+    if (!response.ok || !result?.post) {
+      setActionMessage(result?.error ?? "No s'ha pogut desar el post-it.");
+      return;
+    }
+
+    const updatedPost = result.post;
+    const style = noteStyles[draftType];
+    setNotes((current) =>
+      current.map((note) =>
+        note.id === editingNoteId
+          ? {
+              ...note,
+              type: draftType,
+              title: draftTitle.trim(),
+              body: draftBody.trim(),
+              meta: updatedPost.meta,
+              color: style.color,
+              icon: style.icon,
+            }
+          : note,
+      ),
+    );
+    setActionMessage("Canvis desats al tauler.");
+    setDraftTitle("");
+    setDraftBody("");
+    closeComposer();
   }
 
   async function archiveNote(id: string) {
@@ -291,24 +379,40 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
               ))}
             </div>
             <div className="board-actions">
-              {availableNoteTypes.length > 0 && (
-                <button
-                  className="new-note-button"
-                  onClick={() => {
-                    setDraftType(availableNoteTypes[0]);
-                    setActionMessage("");
-                    setComposerOpen(true);
-                  }}
-                  type="button"
-                >
-                  + Nou post-it
-                </button>
-              )}
               <button className="search-button" aria-label="Cercar" type="button">
                 ⌕
               </button>
             </div>
           </div>
+
+          {availableNoteTypes.length > 0 && (
+            <section className="board-editor" aria-label="Accions sobre el tauler">
+              <div className="board-editor-copy">
+                <span>
+                  {viewer.role === "TUTOR"
+                    ? "EINES DE TUTORIA"
+                    : viewer.role === "DELEGATE"
+                      ? "EINES DE DELEGACIÓ"
+                      : "EINES DEL TAULER"}
+                </span>
+                <strong>Publica directament al taulell</strong>
+                <small>Tria el tipus i escriu. No cal sortir d'aquesta pantalla.</small>
+              </div>
+              <div className="board-editor-actions">
+                {availableNoteTypes.map((type) => (
+                  <button
+                    className={`quick-note quick-note-${noteStyles[type].color}`}
+                    key={type}
+                    onClick={() => openNewNote(type)}
+                    type="button"
+                  >
+                    <span>{noteStyles[type].icon}</span>
+                    + {noteActionLabels[type]}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
           {actionMessage && (
             <p className="action-message" role="status">{actionMessage}</p>
@@ -316,7 +420,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
 
           <div className="corkboard">
             <div className="board-label">
-              <span>📌</span> TAULER DE 3r B
+              <span>📌</span> TAULER DE {viewer.groupName.toUpperCase()}
             </div>
             <div className="notes-grid" aria-live="polite">
               {visibleNotes.map((note, index) => (
@@ -325,6 +429,15 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
                   key={note.id}
                 >
                   <span className="pin" />
+                  {can(viewer, PERMISSIONS.MODERATE_BOARD) && (
+                    <button
+                      className="edit-note"
+                      onClick={() => openEditNote(note)}
+                      type="button"
+                    >
+                      Editar
+                    </button>
+                  )}
                   {can(viewer, PERMISSIONS.MODERATE_BOARD) && (
                     <button
                       className="archive-note"
@@ -510,7 +623,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
             <button
               aria-label="Tancar"
               className="modal-close"
-              onClick={() => setComposerOpen(false)}
+              onClick={closeComposer}
               type="button"
             >
               ×
@@ -518,7 +631,10 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
             <span className="composer-pin" />
             <p className="eyebrow">NOU POST-IT</p>
             <h2 id="new-note-title">Què vols compartir?</h2>
-            <form onSubmit={addNote}>
+            {editingNoteId && (
+              <p className="editing-hint">Estàs editant aquest post-it.</p>
+            )}
+            <form onSubmit={editingNoteId ? updateNote : addNote}>
               <label>
                 Tipus
                 <select
@@ -554,7 +670,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
                   disabled={!draftTitle.trim() || !draftBody.trim()}
                   type="submit"
                 >
-                  Penjar al suro
+                  {editingNoteId ? "Desar canvis" : "Penjar al suro"}
                 </button>
               </div>
             </form>
