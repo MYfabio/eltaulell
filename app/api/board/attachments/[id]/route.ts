@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deleteAttachment } from "@/lib/demo-board-store";
+import { deleteAttachment } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
@@ -24,7 +24,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Falta el fitxer." }, { status: 400 });
   }
 
-  if (!deleteAttachment(viewer, id)) {
+  if (!(await deleteAttachment(viewer, id))) {
     return NextResponse.json(
       { error: "No s'ha trobat el fitxer d'aquest grup." },
       { status: 404 },

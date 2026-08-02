@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { votePoll } from "@/lib/demo-board-store";
+import { votePoll } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
@@ -30,7 +30,7 @@ export async function POST(
     return NextResponse.json({ error: "El vot no és vàlid." }, { status: 400 });
   }
 
-  const result = votePoll(viewer, id, parsed.data.optionId);
+  const result = await votePoll(viewer, id, parsed.data.optionId);
   if ("error" in result && result.error) {
     const message = {
       NOT_FOUND: "No s'ha trobat l'enquesta d'aquest grup.",

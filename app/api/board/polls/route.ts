@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createPoll, listPolls } from "@/lib/demo-board-store";
+import { createPoll, listPolls } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
@@ -25,7 +25,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    polls: listPolls(viewer, can(viewer, PERMISSIONS.MANAGE_POLL_RESULTS)),
+    polls: await listPolls(viewer, can(viewer, PERMISSIONS.MANAGE_POLL_RESULTS)),
   });
 }
 
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     {
-      poll: createPoll(viewer, {
+      poll: await createPoll(viewer, {
         ...parsed.data,
         closesAt: parsed.data.closesAt ?? null,
       }),

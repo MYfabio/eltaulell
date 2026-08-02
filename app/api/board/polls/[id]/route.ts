@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { managePoll } from "@/lib/demo-board-store";
+import { managePoll } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
@@ -34,7 +34,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Falta l'enquesta." }, { status: 400 });
   }
 
-  const result = managePoll(viewer, id, parsed.data.action);
+  const result = await managePoll(viewer, id, parsed.data.action);
   if ("error" in result) {
     return NextResponse.json(
       {

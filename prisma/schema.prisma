@@ -39,6 +39,13 @@ enum PostItType {
   QUESTION
 }
 
+enum BoardPollStatus {
+  PENDING_APPROVAL
+  OPEN
+  CLOSED
+  PUBLISHED
+}
+
 enum IntegrationProvider {
   GOOGLE_CLASSROOM
   MOODLE
@@ -81,6 +88,10 @@ model User {
   updatedAt        DateTime          @updatedAt
   memberships      SchoolMembership[]
   posts            PostIt[]
+  pollsCreated     BoardPoll[]       @relation("PollCreatedBy")
+  pollsValidated   BoardPoll[]       @relation("PollValidatedBy")
+  pollVotes        BoardPollVote[]
+  boardAttachments BoardAttachment[]
   oauthAccounts    OAuthAccount[]
   sessions         Session[]
   acceptedInvites  Invitation[]      @relation("AcceptedInvitation")
@@ -137,13 +148,15 @@ model GroupMembership {
 }
 
 model Board {
-  id        String   @id @default(cuid())
-  groupId   String   @unique
-  title     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  posts     PostIt[]
+  id          String            @id @default(cuid())
+  groupId     String            @unique
+  title       String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  group       Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  posts       PostIt[]
+  polls       BoardPoll[]
+  attachments BoardAttachment[]
 }
 
 model PostIt {
@@ -162,6 +175,75 @@ model PostIt {
 
   @@index([boardId, status, createdAt])
   @@index([authorId])
+}
+
+model BoardPoll {
+  id            String            @id @default(cuid())
+  boardId       String
+  question      String
+  anonymous     Boolean           @default(true)
+  status        BoardPollStatus   @default(PENDING_APPROVAL)
+  closesAt      DateTime?
+  createdById   String?
+  createdByRole String
+  validatedById String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  board         Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy     User?             @relation("PollCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  validatedBy   User?             @relation("PollValidatedBy", fields: [validatedById], references: [id], onDelete: SetNull)
+  options       BoardPollOption[]
+  votes         BoardPollVote[]
+
+  @@index([boardId, status, createdAt])
+  @@index([createdById])
+  @@index([validatedById])
+}
+
+model BoardPollOption {
+  id       String          @id @default(cuid())
+  pollId   String
+  label    String
+  position Int
+  poll     BoardPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes    BoardPollVote[]
+
+  @@unique([pollId, position])
+  @@index([pollId])
+}
+
+model BoardPollVote {
+  id        String          @id @default(cuid())
+  pollId    String
+  optionId  String
+  voterKey  String
+  voterId   String?
+  createdAt DateTime        @default(now())
+  poll      BoardPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option    BoardPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  voter     User?           @relation(fields: [voterId], references: [id], onDelete: SetNull)
+
+  @@unique([pollId, voterKey])
+  @@index([optionId])
+  @@index([voterId])
+}
+
+model BoardAttachment {
+  id             String   @id @default(cuid())
+  boardId        String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  caption        String?
+  content        Bytes
+  uploadedById   String?
+  uploadedByRole String
+  createdAt      DateTime @default(now())
+  board          Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  uploadedBy     User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([boardId, createdAt])
+  @@index([uploadedById])
 }
 
 model CalendarEvent {

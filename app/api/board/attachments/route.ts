@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAttachment, listAttachments } from "@/lib/demo-board-store";
+import { createAttachment, listAttachments } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
@@ -18,7 +18,7 @@ export async function GET() {
     return NextResponse.json({ error: "Cal iniciar sessió." }, { status: 401 });
   }
 
-  return NextResponse.json({ attachments: listAttachments(viewer) });
+  return NextResponse.json({ attachments: await listAttachments(viewer) });
 }
 
 export async function POST(request: Request) {
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const attachment = createAttachment(viewer, {
+  const attachment = await createAttachment(viewer, {
     fileName: file.name.slice(0, 140),
     mimeType: file.type,
     size: file.size,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       attachment,
-      storageMode: "demo-server-memory",
+      storageMode: "postgresql",
     },
     {
       status: 201,

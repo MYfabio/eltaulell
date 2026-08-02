@@ -1,4 +1,4 @@
-import { getAttachment } from "@/lib/demo-board-store";
+import { getAttachment } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 
 export async function GET(
@@ -9,14 +9,14 @@ export async function GET(
   if (!viewer) return new Response("Cal iniciar sessió.", { status: 401 });
 
   const { id } = await params;
-  const attachment = getAttachment(viewer, id);
+  const attachment = await getAttachment(viewer, id);
   if (!attachment) return new Response("Fitxer no trobat.", { status: 404 });
 
   return new Response(Buffer.from(attachment.content), {
     headers: {
       "Cache-Control": "private, no-store",
       "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
-      "Content-Length": String(attachment.size),
+      "Content-Length": String(attachment.sizeBytes),
       "Content-Type": attachment.mimeType,
       "X-Content-Type-Options": "nosniff",
     },
