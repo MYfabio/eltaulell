@@ -279,6 +279,68 @@
   gap: 8px;
 }
 
+.board-editor {
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid #e1e4df;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 5px 18px rgba(40, 48, 58, 0.05);
+}
+
+.board-editor-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.board-editor-copy span {
+  color: #d16d35;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.board-editor-copy strong {
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.board-editor-copy small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.board-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.quick-note {
+  border: 1px solid rgba(38, 52, 73, 0.09);
+  border-radius: 9px;
+  padding: 8px 11px;
+  color: var(--navy);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+  box-shadow: 0 2px 6px rgba(40, 48, 58, 0.06);
+}
+
+.quick-note span {
+  margin-right: 5px;
+}
+
+.quick-note-yellow { background: #fff1a9; }
+.quick-note-blue { background: #cce9f5; }
+.quick-note-pink { background: #f6ccd3; }
+.quick-note-green { background: #cfe5c5; }
+
 .action-message {
   margin: 0 0 10px;
   border-left: 3px solid #d16d35;
@@ -421,21 +483,41 @@
     inset 2px 2px 2px rgba(255, 255, 255, 0.5);
 }
 
+.edit-note,
 .archive-note {
   position: absolute;
   top: 6px;
-  right: 8px;
-  border: 0;
-  background: transparent;
-  color: rgba(38, 52, 73, 0.42);
-  font-size: 16px;
+  z-index: 2;
+  border: 1px solid rgba(38, 52, 73, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: rgba(38, 52, 73, 0.72);
+  padding: 4px 7px;
+  font-size: 8px;
+  font-weight: 800;
   cursor: pointer;
-  opacity: 0;
 }
 
-.note:hover .archive-note,
+.edit-note {
+  right: 58px;
+}
+
+.archive-note {
+  right: 8px;
+  font-size: 0;
+}
+
+.archive-note::after {
+  content: "Arxivar";
+  font-size: 8px;
+}
+
+.edit-note:hover,
+.archive-note:hover,
+.edit-note:focus-visible,
 .archive-note:focus-visible {
-  opacity: 1;
+  background: white;
+  color: var(--navy);
 }
 
 .note-icon {
@@ -971,6 +1053,13 @@ aside {
   font: 700 26px Georgia, serif;
 }
 
+.editing-hint {
+  margin: -12px 0 16px;
+  color: #7b5b31;
+  font-size: 10px;
+  font-weight: 750;
+}
+
 .composer-modal form,
 .composer-modal label {
   display: grid;
@@ -1105,6 +1194,15 @@ aside {
   .board-tools {
     align-items: flex-start;
     gap: 10px;
+  }
+
+  .board-editor {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .board-editor-actions {
+    justify-content: flex-start;
   }
 
   .filters {
