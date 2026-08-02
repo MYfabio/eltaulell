@@ -9,6 +9,7 @@ import {
   type Permission,
   type PostKind,
 } from "@/lib/permissions";
+import BoardExtras from "./board-extras";
 import "./taulell.css";
 
 type NoteType = "Avisos" | "Tasques" | "Activitats" | "Materials";
@@ -108,7 +109,6 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
-  const [pollChoice, setPollChoice] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
@@ -422,6 +422,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
             <div className="board-label">
               <span>📌</span> TAULER DE {viewer.groupName.toUpperCase()}
             </div>
+            {activeFilter === "Tot" && <BoardExtras viewer={viewer} />}
             <div className="notes-grid" aria-live="polite">
               {visibleNotes.map((note, index) => (
                 <article
@@ -460,33 +461,6 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
                   <footer>{note.meta}</footer>
                 </article>
               ))}
-
-              {activeFilter === "Tot" && (
-                <article className="poll-card">
-                  <span className="tape" />
-                  <span className="poll-label">CONSULTA ANÒNIMA</span>
-                  <h2>Quina activitat preferiu per a la tutoria?</h2>
-                  {[
-                    "Dinàmica de grup",
-                    "Debat sobre xarxes",
-                    "Sortida al pati",
-                  ].map((option, index) => (
-                    <button
-                      className={pollChoice === index ? "poll-selected" : ""}
-                      disabled={!can(viewer, PERMISSIONS.VOTE_POLL)}
-                      onClick={() =>
-                        can(viewer, PERMISSIONS.VOTE_POLL) && setPollChoice(index)
-                      }
-                      key={option}
-                      type="button"
-                    >
-                      <span>{pollChoice === index ? "●" : "○"}</span>
-                      {option}
-                    </button>
-                  ))}
-                  <small>El teu vot és completament anònim</small>
-                </article>
-              )}
             </div>
           </div>
         </section>

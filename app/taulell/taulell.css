@@ -634,6 +634,556 @@
   font-size: 8px;
 }
 
+.board-extras {
+  position: relative;
+  z-index: 3;
+  margin-bottom: 26px;
+}
+
+.extras-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 13px;
+  padding: 10px 13px;
+  border: 1px solid rgba(113, 70, 39, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 253, 247, 0.9);
+  box-shadow: 0 4px 13px rgba(70, 35, 16, 0.14);
+}
+
+.extras-toolbar > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.extras-toolbar > div:first-child span {
+  color: #c76335;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.extras-toolbar > div:first-child strong {
+  color: var(--navy);
+  font: 700 14px Georgia, serif;
+}
+
+.extras-toolbar > div:last-child,
+.poll-management {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.extras-toolbar button,
+.poll-management button,
+.extras-submit,
+.add-option {
+  border: 0;
+  border-radius: 999px;
+  background: var(--navy);
+  color: white;
+  padding: 8px 12px;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.extras-toolbar button:last-child {
+  background: #dd7047;
+}
+
+.extras-toolbar button:hover,
+.extras-toolbar button:focus-visible,
+.poll-management button:hover,
+.poll-management button:focus-visible,
+.extras-submit:hover,
+.extras-submit:focus-visible {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.extras-message {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fff8df;
+  color: #694d25;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(70, 35, 16, 0.1);
+}
+
+.board-extras-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.managed-poll-card,
+.attachment-card {
+  position: relative;
+  min-width: 0;
+  border: 1px solid rgba(105, 69, 43, 0.16);
+  background: #fffdf7;
+  box-shadow: 3px 5px 12px rgba(70, 35, 16, 0.19);
+}
+
+.managed-poll-card {
+  grid-row: span 2;
+  padding: 18px;
+  transform: rotate(-0.25deg);
+}
+
+.poll-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.poll-heading small {
+  color: #7f8791;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.poll-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.poll-status-open {
+  background: #e1f2e2;
+  color: #337042;
+}
+
+.poll-status-pending_approval {
+  background: #fff0c9;
+  color: #8c6516;
+}
+
+.poll-status-closed {
+  background: #e8edf3;
+  color: #52657c;
+}
+
+.poll-status-published {
+  background: #dceaf8;
+  color: #315f8b;
+}
+
+.managed-poll-card h2 {
+  margin: 10px 0 13px;
+  color: var(--navy);
+  font: 700 18px/1.2 Georgia, serif;
+}
+
+.poll-awaiting {
+  margin: 8px 0 14px;
+  padding: 10px;
+  border-left: 3px solid #e7a146;
+  background: #fff6df;
+  color: #6f552b;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.poll-voting {
+  display: grid;
+  gap: 6px;
+}
+
+.poll-voting button {
+  width: 100%;
+  border: 1px solid #e8e3d6;
+  border-radius: 7px;
+  background: white;
+  color: #425165;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.poll-voting button span {
+  margin-right: 8px;
+  color: #d7804d;
+}
+
+.poll-voting button.poll-selected {
+  border-color: #e28d57;
+  background: #fff3e9;
+  color: #754322;
+  font-weight: 800;
+}
+
+.poll-voting button:disabled {
+  cursor: default;
+  opacity: 0.82;
+}
+
+.poll-voting small,
+.poll-results > small {
+  margin-top: 4px;
+  color: #7f8791;
+  text-align: center;
+  font-size: 8px;
+}
+
+.poll-results {
+  display: grid;
+  gap: 9px;
+}
+
+.poll-results > div > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #425165;
+  font-size: 9px;
+}
+
+.poll-results em {
+  color: #c76335;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.poll-results i {
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  overflow: visible;
+  border-radius: 99px;
+  background: #ede8dc;
+}
+
+.poll-results i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #e79a5f, #da6d45);
+}
+
+.managed-poll-card footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 9px;
+  border-top: 1px solid #ebe6da;
+  color: #7f8791;
+  font-size: 8px;
+}
+
+.managed-poll-card footer strong {
+  color: #3f6c4e;
+}
+
+.poll-management {
+  margin-top: 11px;
+}
+
+.poll-management button {
+  padding: 6px 9px;
+  font-size: 8px;
+}
+
+.poll-management button.danger-action,
+.delete-attachment {
+  background: #fff;
+  color: #a43e32;
+  border: 1px solid #e8bab4;
+}
+
+.attachment-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  min-height: 96px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.attachment-preview {
+  position: relative;
+  width: 88px;
+  height: 76px;
+  z-index: 1;
+  overflow: visible;
+  border: 0;
+  border-radius: 6px;
+  background: #ece8df;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.attachment-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(35, 39, 45, 0.17);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transform-origin: left center;
+}
+
+.attachment-preview:hover,
+.attachment-preview:focus-visible {
+  z-index: 8;
+}
+
+.attachment-preview:hover img,
+.attachment-preview:focus-visible img {
+  transform: scale(2.35);
+  box-shadow: 0 14px 35px rgba(29, 36, 45, 0.34);
+}
+
+.pdf-preview {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  border-radius: 6px;
+  background: #f7e1de;
+  color: #a33c35;
+  text-align: center;
+}
+
+.pdf-preview b {
+  font: 900 20px Georgia, serif;
+}
+
+.pdf-preview small {
+  font-size: 7px;
+}
+
+.attachment-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-copy strong,
+.attachment-copy span,
+.attachment-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-copy strong {
+  color: var(--navy);
+  font: 700 13px Georgia, serif;
+}
+
+.attachment-copy span,
+.attachment-copy small {
+  color: #7c8490;
+  font-size: 8px;
+}
+
+.delete-attachment {
+  align-self: start;
+  border-radius: 999px;
+  padding: 5px 7px;
+  font-size: 7px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.extras-modal {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 14px;
+  background: #fffdf7;
+  padding: 30px;
+  box-shadow: 0 24px 80px rgba(30, 37, 46, 0.32);
+}
+
+.extras-modal h2 {
+  margin: 0 0 16px;
+  color: var(--navy);
+  font: 700 25px Georgia, serif;
+}
+
+.extras-modal form,
+.extras-modal label,
+.extras-modal fieldset {
+  display: grid;
+  gap: 7px;
+}
+
+.extras-modal form {
+  gap: 14px;
+}
+
+.extras-modal label,
+.extras-modal legend {
+  color: #526176;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.extras-modal fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.extras-modal input:not([type="checkbox"]) {
+  width: 100%;
+  border: 1px solid #dfe1dc;
+  border-radius: 8px;
+  background: white;
+  padding: 10px 11px;
+  color: var(--navy);
+  font: inherit;
+  outline: none;
+}
+
+.extras-modal input:focus {
+  border-color: #d27d4d;
+  box-shadow: 0 0 0 3px rgba(210, 125, 77, 0.12);
+}
+
+.poll-option-field {
+  display: grid;
+  grid-template-columns: 1fr 34px;
+  gap: 7px;
+}
+
+.poll-option-field button {
+  border: 1px solid #e4c4bd;
+  border-radius: 8px;
+  background: #fff;
+  color: #a43e32;
+  cursor: pointer;
+}
+
+.add-option {
+  justify-self: start;
+  background: #e9edf2;
+  color: var(--navy);
+}
+
+.check-label {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px !important;
+}
+
+.check-label input {
+  accent-color: #d16d35;
+}
+
+.approval-notice {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: #fff1cf;
+  color: #6f552b;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.file-drop {
+  border: 1px dashed #d79a72;
+  border-radius: 10px;
+  background: #fff8ed;
+  padding: 14px;
+}
+
+.file-drop input {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.file-drop span {
+  color: #9a5b34;
+  font-size: 9px;
+}
+
+.extras-submit {
+  justify-self: start;
+  padding: 10px 16px;
+  background: #d16d35;
+}
+
+.extras-submit:disabled,
+.poll-management button:disabled,
+.delete-attachment:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.attachment-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(21, 33, 49, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.attachment-viewer > section {
+  width: min(980px, 100%);
+  height: min(760px, calc(100vh - 48px));
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+
+.attachment-viewer header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7e3;
+}
+
+.attachment-viewer header button {
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.attachment-viewer img,
+.attachment-viewer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #e9e7e1;
+  object-fit: contain;
+}
+
 aside {
   padding-top: 41px;
   display: flex;
@@ -1226,6 +1776,50 @@ aside {
 
   .poll-card {
     grid-column: span 1;
+  }
+
+  .extras-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .board-extras-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .managed-poll-card {
+    grid-row: auto;
+  }
+
+  .attachment-card {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .attachment-preview {
+    width: 76px;
+    height: 68px;
+  }
+
+  .delete-attachment {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .attachment-preview:hover img,
+  .attachment-preview:focus-visible img {
+    transform: scale(1.55);
+  }
+
+  .extras-modal {
+    padding: 26px 20px;
+  }
+
+  .attachment-viewer {
+    padding: 12px;
+  }
+
+  .attachment-viewer > section {
+    height: calc(100vh - 24px);
   }
 
   aside {
