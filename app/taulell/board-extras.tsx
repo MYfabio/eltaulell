@@ -183,10 +183,10 @@ export default function BoardExtras({
     if (!poll || poll.status !== "OPEN" || poll.voterChoice) return;
 
     setMessage("");
-    const response = await fetch(boardApiUrl(`/api/board/polls/${encodeURIComponent(pollId)}/vote`), {
-      method: "POST",
+    const response = await fetch(boardApiUrl("/api/board/polls"), {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ optionId }),
+      body: JSON.stringify({ pollId, optionId }),
     });
     const result = (await response.json().catch(() => null)) as
       | { accepted?: boolean; error?: string }
@@ -219,10 +219,10 @@ export default function BoardExtras({
   ) {
     setBusy(true);
     setMessage("");
-    const response = await fetch(boardApiUrl(`/api/board/polls/${encodeURIComponent(pollId)}`), {
+    const response = await fetch(boardApiUrl("/api/board/polls"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ pollId, action }),
     });
     const result = (await response.json().catch(() => null)) as
       | { error?: string; status?: PollStatus | "DELETED"; validatedBy?: string }
@@ -295,9 +295,13 @@ export default function BoardExtras({
   async function deleteAttachment(id: string) {
     setBusy(true);
     setMessage("");
-    const response = await fetch(boardApiUrl(`/api/board/attachments/${encodeURIComponent(id)}`), {
+    const response = await fetch(
+      `/api/board/attachments?groupId=${encodeURIComponent(groupId)}` +
+        `&attachmentId=${encodeURIComponent(id)}`,
+      {
       method: "DELETE",
-    });
+      },
+    );
     const result = (await response.json().catch(() => null)) as
       | { deleted?: boolean; error?: string }
       | null;

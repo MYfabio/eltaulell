@@ -1,6 +1,5 @@
 import "server-only";
 
-import type { GroupMemberRole, MembershipRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { DEMO_VIEWERS, type DemoViewer } from "@/lib/demo-auth";
 import {
@@ -10,6 +9,9 @@ import {
 import { permissionsForRole, type AppRole } from "@/lib/permissions";
 
 const ACADEMIC_YEAR = "2026-2027";
+
+type GroupMemberRole = "TUTOR" | "DELEGATE" | "STUDENT";
+type MembershipRole = AppRole;
 
 const GROUP_ROLE: Partial<Record<AppRole, GroupMemberRole>> = {
   TUTOR: "TUTOR",

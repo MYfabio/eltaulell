@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { createAttachment, listAttachments } from "@/lib/board-store";
+import {
+  createAttachment,
+  deleteAttachment,
+  getAttachment,
+  listAttachments,
+} from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { ObjectStorageConfigurationError } from "@/lib/object-storage";
 import { can, PERMISSIONS } from "@/lib/permissions";
@@ -19,7 +24,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Cal iniciar sessió." }, { status: 401 });
   }
 
-  const groupId = new URL(request.url).searchParams.get("groupId");
+  const searchParams = new URL(request.url).searchParams;
+  const groupId = searchParams.get("groupId");
+  const attachmentId = searchParams.get("attachmentId");
+  if (attachmentId) {
+    const attachment = await getAttachment(viewer, attachmentId, groupId);
+    if (!attachment) return new Response("Fitxer no trobat.", { status: 404 });
+    return new Response(Buffer.from(attachment.content), {
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
+        "Content-Length": String(attachment.sizeBytes),
+        "Content-Type": attachment.mimeType,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
   return NextResponse.json({ attachments: await listAttachments(viewer, groupId) });
 }
 
@@ -92,4 +112,31 @@ export async function POST(request: Request) {
       headers: { "Cache-Control": "no-store" },
     },
   );
+}
+
+export async function DELETE(request: Request) {
+  const viewer = await getDemoViewer();
+  if (!viewer) {
+    return NextResponse.json({ error: "Cal iniciar sessió." }, { status: 401 });
+  }
+  if (!can(viewer, PERMISSIONS.DELETE_ATTACHMENT)) {
+    return NextResponse.json(
+      { error: "Només tutoria i coordinació poden eliminar fitxers." },
+      { status: 403 },
+    );
+  }
+
+  const searchParams = new URL(request.url).searchParams;
+  const groupId = searchParams.get("groupId");
+  const attachmentId = searchParams.get("attachmentId");
+  if (!attachmentId) {
+    return NextResponse.json({ error: "Falta el fitxer." }, { status: 400 });
+  }
+  if (!(await deleteAttachment(viewer, attachmentId, groupId))) {
+    return NextResponse.json(
+      { error: "No s'ha trobat el fitxer d'aquest grup." },
+      { status: 404 },
+    );
+  }
+  return NextResponse.json({ deleted: true, id: attachmentId });
 }

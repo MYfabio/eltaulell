@@ -350,8 +350,8 @@ function serializeAttachment(attachment: AttachmentRow, groupId: string) {
     size: attachment.sizeBytes,
     caption: attachment.caption ?? "",
     url:
-      `/api/board/attachments/${encodeURIComponent(attachment.id)}/content` +
-      `?groupId=${encodeURIComponent(groupId)}`,
+      `/api/board/attachments?groupId=${encodeURIComponent(groupId)}` +
+      `&attachmentId=${encodeURIComponent(attachment.id)}`,
     uploadedBy: attachment.uploadedBy?.name ?? "Usuari eliminat",
     uploadedByRole: attachment.uploadedByRole,
     storageMode: attachment.storageProvider,

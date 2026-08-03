@@ -2,6 +2,7 @@ node_modules
 .npm-cache
 .tmp-prisma
 .prisma-tmp
+.local-preview
 .next
 .env
 .env.local
