@@ -5,11 +5,14 @@ export type LearningTask = {
   studentId: string;
   title: string;
   subject: string;
+  subjectIcon: string;
   status: TaskStatus;
   dueLabel: string;
   overdue: boolean;
   classroomLinked: boolean;
   grade?: number;
+  maximumGrade?: number;
+  teacherFeedback?: string;
 };
 
 export type StudentInsight = {
@@ -187,8 +190,9 @@ export const LEARNING_TASKS: LearningTask[] = [
     studentId: "marc-costa",
     title: "Funcions · exercicis 12, 13 i 16",
     subject: "Matemàtiques",
+    subjectIcon: "∑",
     status: "IN_PROGRESS",
-    dueLabel: "Demà, 10:15",
+    dueLabel: "Demà, 10:15 h",
     overdue: false,
     classroomLinked: true,
   },
@@ -197,8 +201,9 @@ export const LEARNING_TASKS: LearningTask[] = [
     studentId: "marc-costa",
     title: "Dossier de la Revolució Industrial",
     subject: "Història",
+    subjectIcon: "⌛",
     status: "PENDING",
-    dueLabel: "Divendres",
+    dueLabel: "Divendres, 12:00 h",
     overdue: false,
     classroomLinked: true,
   },
@@ -207,6 +212,7 @@ export const LEARNING_TASKS: LearningTask[] = [
     studentId: "marc-costa",
     title: "Informe del laboratori de densitat",
     subject: "Ciències",
+    subjectIcon: "⚗",
     status: "DELIVERED",
     dueLabel: "Lliurat avui",
     overdue: false,
@@ -217,17 +223,22 @@ export const LEARNING_TASKS: LearningTask[] = [
     studentId: "marc-costa",
     title: "Audio: My neighbourhood",
     subject: "Anglès",
+    subjectIcon: "A",
     status: "GRADED",
     dueLabel: "Qualificat",
     overdue: false,
     classroomLinked: false,
     grade: 8.5,
+    maximumGrade: 10,
+    teacherFeedback:
+      "Molt bona pronunciació i vocabulari variat. Revisa el ritme de les dues últimes frases.",
   },
   {
     id: "task-aina-maths",
     studentId: "aina-vidal",
     title: "Funcions · gràfiques",
     subject: "Matemàtiques",
+    subjectIcon: "∑",
     status: "PENDING",
     dueLabel: "Endarrerida 2 dies",
     overdue: true,
@@ -238,6 +249,7 @@ export const LEARNING_TASKS: LearningTask[] = [
     studentId: "julia-mas",
     title: "Eix cronològic del segle XIX",
     subject: "Història",
+    subjectIcon: "⌛",
     status: "IN_PROGRESS",
     dueLabel: "Endarrerida 1 dia",
     overdue: true,
@@ -248,6 +260,7 @@ export const LEARNING_TASKS: LearningTask[] = [
     studentId: "nil-cardona",
     title: "Projecte d'energia i eficiència",
     subject: "Ciències",
+    subjectIcon: "⚗",
     status: "IN_PROGRESS",
     dueLabel: "Dilluns",
     overdue: false,
@@ -258,6 +271,7 @@ export const LEARNING_TASKS: LearningTask[] = [
     studentId: "emma-rius",
     title: "Presentation: Sustainable cities",
     subject: "Anglès",
+    subjectIcon: "A",
     status: "PENDING",
     dueLabel: "Endarrerida 1 dia",
     overdue: true,

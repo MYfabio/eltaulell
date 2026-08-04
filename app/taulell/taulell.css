@@ -2050,65 +2050,207 @@ aside {
 
 .learning-task {
   display: grid;
-  gap: 5px;
+  gap: 10px;
   border: 1px solid #e2e6df;
-  border-radius: 8px;
+  border-radius: 12px;
   background: white;
-  padding: 9px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(42, 52, 63, 0.07);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .learning-task + .learning-task {
   margin-top: 7px;
 }
 
+.learning-task:hover {
+  border-color: #bcc8d3;
+  box-shadow: 0 8px 20px rgba(42, 52, 63, 0.12);
+  transform: translateY(-1px);
+}
+
 .learning-task.overdue {
   border-left: 3px solid #d67354;
 }
 
-.learning-task > span,
-.learning-task > small {
-  color: var(--muted);
-  font-size: 7px;
+.learning-task.status-delivered {
+  border-color: #c9ddd0;
+  background: #fbfefb;
 }
 
-.learning-task > strong {
+.learning-task.status-graded {
+  border-color: #b9d7c2;
+  background: linear-gradient(145deg, #ffffff, #f2faf4);
+}
+
+.task-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.task-subject-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: #e8eff7;
+  color: #315b83;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.task-card-heading > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.task-card-heading > div > span {
+  color: #67798a;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.task-card-heading > div > strong {
   color: var(--navy);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.35;
 }
 
-.learning-task > div {
+.task-due-date {
+  display: grid;
+  gap: 2px;
+  border-radius: 8px;
+  background: #f5f7f9;
+  padding: 7px 8px;
+}
+
+.task-due-date span {
+  color: #7b8793;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.task-due-date strong {
+  color: #3e4c5a;
+  font-size: 8px;
+}
+
+.learning-task.overdue .task-due-date {
+  background: #fff0ea;
+}
+
+.learning-task.overdue .task-due-date strong {
+  color: #a64f36;
+}
+
+.task-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.task-card-badges em,
+.task-card-badges b {
+  border-radius: 999px;
+  padding: 4px 6px;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.task-card-badges em {
+  background: #fff0df;
+  color: #9b5b2d;
+}
+
+.task-card-badges b {
+  background: #e8f2eb;
+  color: #52795a;
+}
+
+.task-grade-badge {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  border-radius: 9px;
+  background: #dff2e4;
+  padding: 8px 9px;
+  color: #27613a;
+}
+
+.task-grade-badge span {
+  font-size: 7px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.task-grade-badge strong {
+  font-size: 12px;
+}
+
+.teacher-feedback {
+  border-left: 3px solid #6687a5;
+  border-radius: 7px;
+  background: #eef4f9;
+  padding: 8px 9px;
+}
+
+.teacher-feedback span {
+  color: #456783;
+  font-size: 7px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.teacher-feedback p {
+  margin: 4px 0 0;
+  color: #3f5365;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.task-card-actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.learning-task > div em {
-  border-radius: 99px;
-  background: #e7f2e9;
-  padding: 3px 5px;
-  color: #52795a;
-  font-size: 6px;
-  font-style: normal;
-  font-weight: 800;
-}
-
-.learning-task > div b {
-  color: #52795a;
-  font-size: 11px;
-}
-
-.learning-task > button {
-  justify-self: start;
+.task-card-actions button {
   border: 0;
   border-radius: 7px;
-  background: var(--navy);
   padding: 7px 8px;
-  color: white;
   cursor: pointer;
   font-size: 7px;
   font-weight: 800;
+  line-height: 1.2;
+}
+
+.task-primary-action {
+  background: var(--navy);
+  color: white;
+}
+
+.task-secondary-action {
+  outline: 1px solid #9eacb9;
+  background: white;
+  color: #41566b;
+}
+
+.task-feedback-action {
+  background: #dfeaf3;
+  color: #315c7d;
+}
+
+.task-card-actions button:hover {
+  filter: brightness(0.96);
 }
 
 .dashboard.theme-whiteboard {

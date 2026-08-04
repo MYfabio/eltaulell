@@ -127,6 +127,8 @@ export default function BoardClient({
   selectedBoard: BoardChoice;
   viewer: DemoViewer;
 }) {
+  const taskOwnerId = viewer.id === "student-marc" ? "marc-costa" : viewer.id;
+  const taskStorageKey = `eltaulell-learning-tasks-${taskOwnerId}`;
   const [notes, setNotes] = useState(initialNotes);
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tot");
   const [chatOpen, setChatOpen] = useState(false);
@@ -141,9 +143,11 @@ export default function BoardClient({
   const [boardTheme, setBoardTheme] = useState<BoardTheme>("cork");
   const [resourcesOpen, setResourcesOpen] = useState(false);
   const [learningTasks, setLearningTasks] = useState<LearningTask[]>(() =>
-    tasksForStudent(viewer.id === "student-marc" ? "marc-costa" : viewer.id),
+    tasksForStudent(taskOwnerId),
   );
   const [classroomNotice, setClassroomNotice] = useState("");
+  const [tasksHydrated, setTasksHydrated] = useState(false);
+  const [feedbackTaskId, setFeedbackTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("eltaulell-board-theme");
@@ -155,6 +159,25 @@ export default function BoardClient({
   useEffect(() => {
     window.localStorage.setItem("eltaulell-board-theme", boardTheme);
   }, [boardTheme]);
+
+  useEffect(() => {
+    try {
+      const savedTasks = window.sessionStorage.getItem(taskStorageKey);
+      if (savedTasks) {
+        const parsedTasks = JSON.parse(savedTasks) as LearningTask[];
+        if (Array.isArray(parsedTasks)) setLearningTasks(parsedTasks);
+      }
+    } catch {
+      window.sessionStorage.removeItem(taskStorageKey);
+    } finally {
+      setTasksHydrated(true);
+    }
+  }, [taskStorageKey]);
+
+  useEffect(() => {
+    if (!tasksHydrated) return;
+    window.sessionStorage.setItem(taskStorageKey, JSON.stringify(learningTasks));
+  }, [learningTasks, taskStorageKey, tasksHydrated]);
 
   const availableNoteTypes = useMemo(
     () =>
@@ -337,7 +360,7 @@ export default function BoardClient({
     setNotes((current) => current.filter((item) => item.id !== id));
   }
 
-  function changeTaskStatus(taskId: string, status: TaskStatus) {
+  function updateTaskStatus(taskId: string, status: TaskStatus) {
     const task = learningTasks.find((item) => item.id === taskId);
     if (!task || viewer.role !== "STUDENT") return;
 
@@ -345,13 +368,39 @@ export default function BoardClient({
       current.map((item) => (item.id === taskId ? { ...item, status } : item)),
     );
 
-    if (status === "DELIVERED" && task.classroomLinked) {
-      setClassroomNotice(
-        "Tasca marcada com a lliurada en local. L'enviament real a Classroom s'activarà quan el centre autoritzi Google Workspace.",
-      );
-    } else {
-      setClassroomNotice("Estat de la tasca actualitzat en aquesta vista local.");
-    }
+  }
+
+  function startTask(task: LearningTask) {
+    if (task.status === "PENDING") updateTaskStatus(task.id, "IN_PROGRESS");
+    setQuery(`Ajuda'm a començar: ${task.title}`);
+    setAnswer(
+      `Comencem per entendre què et demana la tasca de ${task.subject}. Quina part tens clara i quin seria el primer pas més petit que podries fer?`,
+    );
+    setChatOpen(true);
+    setClassroomNotice(
+      task.classroomLinked
+        ? "S'ha obert el Tutor IA per començar. El document de Classroom s'obrirà aquí quan el centre autoritzi Google Workspace."
+        : "S'ha obert el Tutor IA amb el context d'aquesta tasca.",
+    );
+  }
+
+  function deliverTask(task: LearningTask) {
+    updateTaskStatus(task.id, "DELIVERED");
+    setFeedbackTaskId(null);
+    setClassroomNotice(
+      task.classroomLinked
+        ? "Tasca marcada com a lliurada en aquesta demo local. Encara no s'ha enviat a Classroom perquè falta l'autorització OAuth."
+        : "Tasca marcada com a lliurada en aquesta demo local.",
+    );
+  }
+
+  function reclaimTask(task: LearningTask) {
+    updateTaskStatus(task.id, "IN_PROGRESS");
+    setClassroomNotice(
+      task.classroomLinked
+        ? "Lliurament anul·lat en aquesta demo local. La recuperació real a Classroom s'activarà amb OAuth."
+        : "La tasca torna a estar en procés.",
+    );
   }
 
   return (
@@ -519,7 +568,7 @@ export default function BoardClient({
                   <strong>Les meves tasques</strong>
                   <small>Mou cada activitat al següent estat quan avancis.</small>
                 </div>
-                <em>Classroom: autorització pendent</em>
+                <em>Classroom · simulació local</em>
               </header>
               {classroomNotice && <p role="status">{classroomNotice}</p>}
               <div className="task-columns">
@@ -527,24 +576,77 @@ export default function BoardClient({
                   <section key={status}>
                     <h2>{taskStatusLabels[status]}</h2>
                     {learningTasks.filter((task) => task.status === status).map((task) => (
-                      <article className={task.overdue ? "learning-task overdue" : "learning-task"} key={task.id}>
-                        <span>{task.subject}</span>
-                        <strong>{task.title}</strong>
-                        <small>{task.dueLabel}</small>
-                        <div>
-                          {task.classroomLinked && <em>Classroom</em>}
-                          {typeof task.grade === "number" && <b>{task.grade.toFixed(1)}</b>}
+                      <article
+                        className={`learning-task status-${status.toLowerCase().replace("_", "-")}${task.overdue ? " overdue" : ""}`}
+                        key={task.id}
+                      >
+                        <header className="task-card-heading">
+                          <span aria-hidden="true" className="task-subject-icon">{task.subjectIcon}</span>
+                          <div>
+                            <span>{task.subject}</span>
+                            <strong>{task.title}</strong>
+                          </div>
+                        </header>
+
+                        <div className="task-due-date">
+                          <span>Data límit</span>
+                          <strong>{task.dueLabel}</strong>
                         </div>
-                        {status === "PENDING" && (
-                          <button onClick={() => changeTaskStatus(task.id, "IN_PROGRESS")} type="button">
-                            Començar
-                          </button>
+
+                        <div className="task-card-badges">
+                          {task.classroomLinked && <em>Classroom · OAuth pendent</em>}
+                          {status === "IN_PROGRESS" && <b>En procés</b>}
+                          {status === "DELIVERED" && <b>Esperant qualificació</b>}
+                        </div>
+
+                        {status === "GRADED" && typeof task.grade === "number" && (
+                          <div className="task-grade-badge">
+                            <span>Qualificació</span>
+                            <strong>
+                              {task.grade.toFixed(1)} / {task.maximumGrade ?? 10}
+                            </strong>
+                          </div>
                         )}
-                        {status === "IN_PROGRESS" && (
-                          <button onClick={() => changeTaskStatus(task.id, "DELIVERED")} type="button">
-                            Marcar com a lliurada
-                          </button>
+
+                        {feedbackTaskId === task.id && task.teacherFeedback && (
+                          <div className="teacher-feedback" role="status">
+                            <span>Comentari del professorat</span>
+                            <p>{task.teacherFeedback}</p>
+                          </div>
                         )}
+
+                        <footer className="task-card-actions">
+                          {status === "PENDING" && (
+                            <button className="task-primary-action" onClick={() => startTask(task)} type="button">
+                              Començar
+                            </button>
+                          )}
+                          {status === "IN_PROGRESS" && (
+                            <>
+                              <button className="task-secondary-action" onClick={() => startTask(task)} type="button">
+                                Continuar amb Tutor IA
+                              </button>
+                              <button className="task-primary-action" onClick={() => deliverTask(task)} type="button">
+                                Lliurar
+                              </button>
+                            </>
+                          )}
+                          {status === "DELIVERED" && (
+                            <button className="task-secondary-action" onClick={() => reclaimTask(task)} type="button">
+                              Anul·lar lliurament
+                            </button>
+                          )}
+                          {status === "GRADED" && task.teacherFeedback && (
+                            <button
+                              aria-expanded={feedbackTaskId === task.id}
+                              className="task-feedback-action"
+                              onClick={() => setFeedbackTaskId((current) => current === task.id ? null : task.id)}
+                              type="button"
+                            >
+                              {feedbackTaskId === task.id ? "Amagar comentari" : "Llegir comentari"}
+                            </button>
+                          )}
+                        </footer>
                       </article>
                     ))}
                     {!learningTasks.some((task) => task.status === status) && <p>Cap tasca.</p>}
