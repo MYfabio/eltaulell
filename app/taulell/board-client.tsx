@@ -567,15 +567,6 @@ export default function BoardClient({
 
           {viewer.role === "STUDENT" && (
             <section className="task-workflow board-task-workflow" aria-label="Seguiment visual de tasques">
-              <header>
-                <div>
-                  <span>MODE DE TREBALL</span>
-                  <strong>Les meves tasques</strong>
-                  <small>Mou cada activitat al següent estat quan avancis.</small>
-                </div>
-                <em>Classroom · simulació local</em>
-              </header>
-              {classroomNotice && <p role="status">{classroomNotice}</p>}
               <div className="task-columns">
                 {(Object.keys(taskStatusLabels) as TaskStatus[]).map((status) => (
                   <section key={status}>
