@@ -460,14 +460,14 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 26px 22px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .note,
 .poll-card {
   position: relative;
   padding: 20px 19px 16px;
-  min-height: 224px;
+  min-height: 260px;
   box-shadow: 3px 5px 10px rgba(70, 35, 16, 0.23);
   transition:
     transform 0.2s,
@@ -2281,6 +2281,8 @@ aside {
 }
 
 .board-task-workflow .task-columns > section {
+  display: flex;
+  flex-direction: column;
   border: 1px dashed rgba(91, 54, 28, 0.42);
   background: rgba(101, 62, 34, 0.16);
   padding: 11px;
@@ -2295,10 +2297,40 @@ aside {
 .board-task-workflow .learning-task {
   position: relative;
   overflow: visible;
+  min-height: 260px;
   border: 0;
   border-radius: 2px;
   box-shadow: 3px 5px 10px rgba(70, 35, 16, 0.24);
   transform: rotate(-0.35deg);
+}
+
+.board-task-workflow .task-card-heading > div > span {
+  font-size: 9px;
+}
+
+.board-task-workflow .task-card-heading > div > strong {
+  font-size: 13px;
+}
+
+.board-task-workflow .task-due-date span,
+.board-task-workflow .task-grade-badge span,
+.board-task-workflow .teacher-feedback span {
+  font-size: 8px;
+}
+
+.board-task-workflow .task-due-date strong,
+.board-task-workflow .teacher-feedback p {
+  font-size: 10px;
+}
+
+.board-task-workflow .task-card-badges em,
+.board-task-workflow .task-card-badges b,
+.board-task-workflow .task-card-actions button {
+  font-size: 8px;
+}
+
+.board-task-workflow .task-card-actions {
+  margin-top: auto;
 }
 
 .board-task-workflow .learning-task:nth-of-type(even) {
