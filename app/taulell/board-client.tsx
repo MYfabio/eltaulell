@@ -163,6 +163,7 @@ export default function BoardClient({
   const canArrangeBoard = viewer.role === "STUDENT";
   const boardRef = useRef<HTMLDivElement>(null);
   const cardDragRef = useRef<CardDragState | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const [notes, setNotes] = useState(initialNotes);
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tot");
   const [chatOpen, setChatOpen] = useState(false);
@@ -185,6 +186,59 @@ export default function BoardClient({
   const [cardPositions, setCardPositions] = useState<Record<string, CardPosition>>({});
   const [loadedCardPositionKey, setLoadedCardPositionKey] = useState<string | null>(null);
   const [draggingCardKey, setDraggingCardKey] = useState<string | null>(null);
+
+  function playCardSound(kind: "lift" | "drop") {
+    try {
+      const context = audioContextRef.current ?? new AudioContext();
+      audioContextRef.current = context;
+      if (context.state === "suspended") void context.resume();
+
+      const now = context.currentTime;
+      const duration = kind === "lift" ? 0.055 : 0.075;
+      const noiseBuffer = context.createBuffer(
+        1,
+        Math.ceil(context.sampleRate * duration),
+        context.sampleRate,
+      );
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let index = 0; index < noiseData.length; index += 1) {
+        noiseData[index] = Math.random() * 2 - 1;
+      }
+
+      const noise = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const noiseGain = context.createGain();
+      noise.buffer = noiseBuffer;
+      filter.type = kind === "lift" ? "highpass" : "lowpass";
+      filter.frequency.setValueAtTime(kind === "lift" ? 1450 : 850, now);
+      noiseGain.gain.setValueAtTime(kind === "lift" ? 0.012 : 0.016, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      noise.connect(filter).connect(noiseGain).connect(context.destination);
+
+      const tone = context.createOscillator();
+      const toneGain = context.createGain();
+      tone.type = kind === "lift" ? "sine" : "triangle";
+      tone.frequency.setValueAtTime(kind === "lift" ? 390 : 230, now);
+      tone.frequency.exponentialRampToValueAtTime(kind === "lift" ? 540 : 135, now + duration);
+      toneGain.gain.setValueAtTime(0.0001, now);
+      toneGain.gain.exponentialRampToValueAtTime(kind === "lift" ? 0.014 : 0.019, now + 0.006);
+      toneGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      tone.connect(toneGain).connect(context.destination);
+
+      noise.start(now);
+      tone.start(now);
+      tone.stop(now + duration);
+    } catch {
+      // El moviment del tauler ha de continuar funcionant encara que l'àudio no estigui disponible.
+    }
+  }
+
+  useEffect(() => () => {
+    if (audioContextRef.current) {
+      void audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("eltaulell-board-theme");
@@ -457,6 +511,7 @@ export default function BoardClient({
     };
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
+    playCardSound("lift");
     setDraggingCardKey(cardKey);
   }
 
@@ -502,6 +557,7 @@ export default function BoardClient({
       ...current,
       [dragState.cardKey]: { x: dragState.nextX, y: dragState.nextY },
     }));
+    playCardSound("drop");
     cardDragRef.current = null;
     setDraggingCardKey(null);
   }
