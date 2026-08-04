@@ -560,8 +560,13 @@ export default function BoardClient({
             <p className="action-message" role="status">{actionMessage}</p>
           )}
 
+          <div className="corkboard">
+            <div className="board-label">
+              <span>📌</span> TAULER DE {selectedBoard.groupName.toUpperCase()}
+            </div>
+
           {viewer.role === "STUDENT" && (
-            <section className="task-workflow" aria-label="Seguiment visual de tasques">
+            <section className="task-workflow board-task-workflow" aria-label="Seguiment visual de tasques">
               <header>
                 <div>
                   <span>MODE DE TREBALL</span>
@@ -656,10 +661,6 @@ export default function BoardClient({
             </section>
           )}
 
-          <div className="corkboard">
-            <div className="board-label">
-              <span>📌</span> TAULER DE {selectedBoard.groupName.toUpperCase()}
-            </div>
             {activeFilter === "Tot" && (
               <BoardExtras groupId={selectedBoard.groupId} viewer={viewer} />
             )}

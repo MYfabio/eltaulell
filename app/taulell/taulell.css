@@ -2253,6 +2253,100 @@ aside {
   filter: brightness(0.96);
 }
 
+.corkboard .board-task-workflow {
+  margin: 0 0 30px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.board-task-workflow > header {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(116, 79, 49, 0.18);
+  border-radius: 3px;
+  background: #faf6ec;
+  padding: 10px 14px;
+  box-shadow: 2px 4px 8px rgba(70, 35, 16, 0.2);
+  transform: rotate(-0.4deg);
+}
+
+.board-task-workflow > p {
+  width: fit-content;
+  max-width: 100%;
+  border-left: 0;
+  background: #e7f2e9;
+  box-shadow: 2px 4px 8px rgba(70, 35, 16, 0.18);
+}
+
+.board-task-workflow .task-columns > section {
+  border: 1px dashed rgba(91, 54, 28, 0.42);
+  background: rgba(101, 62, 34, 0.16);
+  padding: 11px;
+}
+
+.board-task-workflow .task-columns h2 {
+  color: #fffaf0;
+  font-size: 9px;
+  text-shadow: 0 1px 2px rgba(67, 35, 15, 0.6);
+}
+
+.board-task-workflow .learning-task {
+  position: relative;
+  overflow: visible;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: 3px 5px 10px rgba(70, 35, 16, 0.24);
+  transform: rotate(-0.35deg);
+}
+
+.board-task-workflow .learning-task:nth-of-type(even) {
+  transform: rotate(0.45deg);
+}
+
+.board-task-workflow .learning-task::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff5ef 0 12%, #d55445 22% 58%, #84352d 62% 100%);
+  box-shadow: 0 2px 3px rgba(62, 28, 20, 0.38);
+  transform: translateX(-50%);
+}
+
+.board-task-workflow .learning-task:hover {
+  transform: rotate(0) translateY(-2px);
+}
+
+.board-task-workflow .learning-task.status-pending {
+  background: #fff1a9;
+}
+
+.board-task-workflow .learning-task.status-in-progress {
+  background: #cce9f5;
+}
+
+.board-task-workflow .learning-task.status-delivered {
+  background: #cfe5c5;
+}
+
+.board-task-workflow .learning-task.status-graded {
+  background: #ead7f1;
+}
+
+.board-task-workflow .task-due-date,
+.board-task-workflow .teacher-feedback {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.board-task-workflow .task-secondary-action {
+  background: rgba(255, 255, 255, 0.68);
+}
+
 .dashboard.theme-whiteboard {
   background: #f1f3f2;
 }
@@ -2278,6 +2372,16 @@ aside {
   border-radius: 13px;
   box-shadow: 0 7px 20px rgba(47, 61, 76, 0.12);
   transform: none;
+}
+
+.theme-whiteboard .board-task-workflow .task-columns > section {
+  border-color: rgba(82, 101, 124, 0.24);
+  background: rgba(82, 101, 124, 0.07);
+}
+
+.theme-whiteboard .board-task-workflow .task-columns h2 {
+  color: #52657c;
+  text-shadow: none;
 }
 
 .dashboard.theme-chalkboard {
