@@ -146,6 +146,9 @@ function auditDetail(action: string, metadata: unknown) {
   if (action === "USER_CREATED") return `Alta de ${String(data.email || "persona")}`;
   if (action === "USER_UPDATED") return `Canvi de perfil o estat de ${String(data.email || "persona")}`;
   if (action === "GROUP_CREATED") return `Creació del grup ${String(data.name || "")}`;
+  if (action === "GROUP_INVITE_CREATED") return `Invitació creada per al grup ${String(data.groupName || "")}`;
+  if (action === "GROUP_INVITE_REVOKED") return "Invitació de grup revocada";
+  if (action === "GROUP_INVITE_ACCEPTED") return "Alumne incorporat mitjançant una invitació";
   return "Canvi administratiu";
 }
 

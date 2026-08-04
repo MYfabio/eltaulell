@@ -20,6 +20,7 @@ export const PERMISSIONS = {
   MANAGE_SCHOOL: "school:manage",
   MANAGE_USERS: "users:manage",
   MANAGE_GROUPS: "groups:manage",
+  MANAGE_GROUP_INVITES: "groups:invites:manage",
   MANAGE_INTEGRATIONS: "integrations:manage",
   VIEW_AUDIT_LOG: "audit:view",
 } as const;
@@ -55,6 +56,7 @@ export const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
     PERMISSIONS.MANAGE_SCHOOL,
     PERMISSIONS.MANAGE_USERS,
     PERMISSIONS.MANAGE_GROUPS,
+    PERMISSIONS.MANAGE_GROUP_INVITES,
     PERMISSIONS.MANAGE_INTEGRATIONS,
     PERMISSIONS.VIEW_AUDIT_LOG,
   ],
@@ -73,6 +75,7 @@ export const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
     PERMISSIONS.VIEW_GROUP_DASHBOARD,
     PERMISSIONS.VIEW_STUDENT_FOLLOWUP,
     PERMISSIONS.MANAGE_CALENDAR,
+    PERMISSIONS.MANAGE_GROUP_INVITES,
   ],
   DELEGATE: [
     ...COMMON_PERMISSIONS,
@@ -106,6 +109,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.MANAGE_SCHOOL]: "Administrar el centre",
   [PERMISSIONS.MANAGE_USERS]: "Gestionar persones i rols",
   [PERMISSIONS.MANAGE_GROUPS]: "Gestionar grups",
+  [PERMISSIONS.MANAGE_GROUP_INVITES]: "Convidar alumnat al grup",
   [PERMISSIONS.MANAGE_INTEGRATIONS]: "Configurar integracions",
   [PERMISSIONS.VIEW_AUDIT_LOG]: "Consultar l’auditoria",
 };

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import PortalShell from "@/app/components/portal-shell";
+import GroupOnboarding from "@/app/tutoria/group-onboarding";
 import TutoringDashboard from "@/app/tutoria/tutoring-dashboard";
 import { requireDemoPermission } from "@/lib/demo-auth";
+import { inviteGroupsFor, listGroupInvites } from "@/lib/group-invites";
 import { can, PERMISSIONS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,11 @@ export default async function TutoringPage() {
   const viewer = await requireDemoPermission(PERMISSIONS.VIEW_GROUP_DASHBOARD);
   const isDelegate = viewer.role === "DELEGATE";
   const canViewFollowup = can(viewer, PERMISSIONS.VIEW_STUDENT_FOLLOWUP);
+  const canManageInvitations = can(viewer, PERMISSIONS.MANAGE_GROUP_INVITES);
+  const [inviteGroups, invitations] = canManageInvitations
+    ? await Promise.all([inviteGroupsFor(viewer), listGroupInvites(viewer)])
+    : [[], []];
+  const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
   return (
     <PortalShell
@@ -45,6 +52,14 @@ export default async function TutoringPage() {
             {can(viewer, PERMISSIONS.CREATE_POLL) && <Link href="/taulell">Crear consulta de grup</Link>}
           </div>
         </article>
+
+        {canManageInvitations && (
+          <GroupOnboarding
+            googleConfigured={googleConfigured}
+            groups={inviteGroups}
+            initialInvitations={invitations}
+          />
+        )}
 
         {canViewFollowup ? (
           <TutoringDashboard />

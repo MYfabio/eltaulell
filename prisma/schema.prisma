@@ -75,6 +75,7 @@ model School {
   groups           Group[]
   integrations     IntegrationConnection[]
   invitations      Invitation[]
+  groupInvites     GroupInvite[]
   calendarEvents   CalendarEvent[]
   auditLogs        AuditLog[]
 }
@@ -95,6 +96,7 @@ model User {
   oauthAccounts    OAuthAccount[]
   sessions         Session[]
   acceptedInvites  Invitation[]      @relation("AcceptedInvitation")
+  groupInvitesCreated GroupInvite[]  @relation("GroupInviteCreatedBy")
   auditLogs        AuditLog[]
 }
 
@@ -129,6 +131,7 @@ model Group {
   board            Board?
   calendarEvents   CalendarEvent[]
   externalCourses  ExternalCourse[]
+  invites          GroupInvite[]
 
   @@unique([schoolId, academicYear, name])
   @@index([schoolId])
@@ -343,6 +346,27 @@ model Invitation {
   acceptedBy   User?           @relation("AcceptedInvitation", fields: [acceptedById], references: [id], onDelete: SetNull)
 
   @@index([schoolId, email])
+}
+
+model GroupInvite {
+  id          String   @id @default(cuid())
+  schoolId    String
+  groupId     String
+  createdById String?
+  codeHash    String   @unique
+  expiresAt   DateTime
+  maxUses     Int      @default(30)
+  useCount    Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation("GroupInviteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([groupId, active, expiresAt])
+  @@index([createdById])
 }
 
 model AuditLog {

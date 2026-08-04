@@ -54,6 +54,8 @@ Implementat o preparat:
 - Imatges i PDF amb previsualització, límits i eliminació per tutoria o
   coordinació.
 - Emmagatzematge privat de fitxers a Railway Bucket.
+- Invitacions d'alumnat per grup amb enllaç, codi temporal, caducitat, límit
+  d'usos, revocació, permisos de tutoria i auditoria.
 - Vista local ràpida per revisar canvis abans de publicar.
 
 Prototipat i validat només en local el 4 d'agost de 2026:
@@ -72,7 +74,7 @@ Prototipat i validat només en local el 4 d'agost de 2026:
 Pendent d'implementació real:
 
 - Autenticació de centre amb Google Workspace.
-- Sincronització amb Google Classroom.
+- Autorització OAuth i importació real de cursos i alumnat des de Google Classroom.
 - Persistència PostgreSQL dels nous indicadors, tasques i historials de Tutoria
   IA, amb política de conservació i accés definida pel centre.
 - Connexió amb Moodle o iEduca mitjançant una API autoritzada.

@@ -34,6 +34,13 @@ export interface DatabaseClient {
     findMany: DbMethod;
     upsert: DbMethod;
   };
+  groupInvite: {
+    create: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    update: DbMethod;
+    updateMany: DbMethod;
+  };
   school: { findUniqueOrThrow: DbMethod; upsert: DbMethod };
   schoolMembership: {
     count: DbMethod;
@@ -51,6 +58,7 @@ type LocalState = {
   auditLogs: Row[];
   boards: Row[];
   groupMemberships: Row[];
+  groupInvites: Row[];
   groups: Row[];
   memberships: Row[];
   pollOptions: Row[];
@@ -66,6 +74,7 @@ function makeState(): LocalState {
     auditLogs: [],
     boards: [],
     groupMemberships: [],
+    groupInvites: [],
     groups: [],
     memberships: [],
     pollOptions: [],
@@ -78,7 +87,7 @@ function makeState(): LocalState {
 
 function readPersistedState(filePath: string | undefined) {
   if (!filePath || !existsSync(filePath)) return makeState();
-  return JSON.parse(readFileSync(filePath, "utf8"), (_key, value) => {
+  const persisted = JSON.parse(readFileSync(filePath, "utf8"), (_key, value) => {
     if (
       typeof value === "string" &&
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
@@ -89,7 +98,8 @@ function readPersistedState(filePath: string | undefined) {
       return Buffer.from(value.data);
     }
     return value;
-  }) as LocalState;
+  }) as Partial<LocalState>;
+  return { ...makeState(), ...persisted } as LocalState;
 }
 
 function now() {
@@ -390,8 +400,8 @@ export function createLocalDb(): DatabaseClient {
 
     groupMembership: {
       async count({ where }: Row) {
-        return state.groupMemberships.filter(
-          (membership) => membership.schoolMembershipId === where.schoolMembershipId,
+        return state.groupMemberships.filter((membership) =>
+          Object.entries(where).every(([key, value]) => membership[key] === value),
         ).length;
       },
       async upsert({ where, create }: Row) {
@@ -429,9 +439,81 @@ export function createLocalDb(): DatabaseClient {
         return { count: before - state.groupMemberships.length };
       },
       async create({ data }: Row) {
+        if (
+          state.groupMemberships.some(
+            (membership) =>
+              membership.groupId === data.groupId &&
+              membership.schoolMembershipId === data.schoolMembershipId,
+          )
+        ) {
+          throw uniqueError("Group membership already exists");
+        }
         const assignment = { id: randomUUID(), createdAt: now(), ...data };
         state.groupMemberships.push(assignment);
         return assignment;
+      },
+    },
+
+    groupInvite: {
+      async create({ data }: Row) {
+        if (state.groupInvites.some((invite) => invite.codeHash === data.codeHash)) {
+          throw uniqueError("Invite code already exists");
+        }
+        const invite = {
+          id: data.id ?? randomUUID(),
+          active: true,
+          maxUses: 30,
+          useCount: 0,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.groupInvites.push(invite);
+        return invite;
+      },
+      async findMany({ where }: Row) {
+        return state.groupInvites
+          .filter((invite) =>
+            Object.entries(where ?? {}).every(([key, value]) => invite[key] === value),
+          )
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
+      async findFirst({ where, select }: Row) {
+        const invite = state.groupInvites.find((candidate) =>
+          Object.entries(where ?? {}).every(([key, value]) => candidate[key] === value),
+        );
+        return project(invite, select);
+      },
+      async update({ where, data }: Row) {
+        const invite = state.groupInvites.find((candidate) => candidate.id === where.id);
+        if (!invite) throw new Error("Group invite not found");
+        const update = { ...data };
+        if (typeof data.useCount === "object" && data.useCount?.increment) {
+          update.useCount = invite.useCount + data.useCount.increment;
+        }
+        Object.assign(invite, update, { updatedAt: now() });
+        return invite;
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.groupInvites.filter((invite) => {
+          if (where.id && invite.id !== where.id) return false;
+          if (typeof where.active === "boolean" && invite.active !== where.active) return false;
+          if (where.expiresAt?.gt && invite.expiresAt.getTime() <= where.expiresAt.gt.getTime()) {
+            return false;
+          }
+          if (typeof where.useCount?.lt === "number" && invite.useCount >= where.useCount.lt) {
+            return false;
+          }
+          return true;
+        });
+        for (const invite of matches) {
+          const update = { ...data };
+          if (typeof data.useCount === "object" && data.useCount?.increment) {
+            update.useCount = invite.useCount + data.useCount.increment;
+          }
+          Object.assign(invite, update, { updatedAt: now() });
+        }
+        return { count: matches.length };
       },
     },
 

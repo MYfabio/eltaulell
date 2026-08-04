@@ -11,6 +11,11 @@ enquestes moderades i fitxers del tauler. L'accés actual és de demostració;
 l'autenticació real amb Google Workspace, Classroom i Moodle encara forma part
 del full de ruta.
 
+Tutoria i coordinació també poden crear invitacions temporals per grup amb un
+enllaç i un codi separat, limitar-ne els usos i revocar-les. La importació de
+l'alumnat des de Classroom es mostra com a flux preparat, però no llegeix dades
+reals fins que el centre completi l'autorització OAuth de Google.
+
 Consulta [PROJECT.md](./PROJECT.md) per entendre l'abast i les decisions del
 projecte, i [ROADMAP.md](./ROADMAP.md) per veure què està fet i què falta.
 

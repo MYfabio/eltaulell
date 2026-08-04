@@ -3,8 +3,11 @@ import { createLocalDb, type DatabaseClient } from "@/lib/local-db";
 
 const globalForPrisma = globalThis as unknown as {
   localDb?: DatabaseClient;
+  localDbVersion?: number;
   prisma?: DatabaseClient;
 };
+
+const LOCAL_DB_VERSION = 3;
 
 function createProductionDb() {
   const require = createRequire(import.meta.url);
@@ -16,6 +19,14 @@ function createProductionDb() {
 
 const localPreview = process.env.ELTAULELL_LOCAL_PREVIEW === "1";
 
+function getLocalDb() {
+  if (!globalForPrisma.localDb || globalForPrisma.localDbVersion !== LOCAL_DB_VERSION) {
+    globalForPrisma.localDb = createLocalDb();
+    globalForPrisma.localDbVersion = LOCAL_DB_VERSION;
+  }
+  return globalForPrisma.localDb;
+}
+
 export const db: DatabaseClient = localPreview
-  ? (globalForPrisma.localDb ??= createLocalDb())
+  ? getLocalDb()
   : (globalForPrisma.prisma ??= createProductionDb());

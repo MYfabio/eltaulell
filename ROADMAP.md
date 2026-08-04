@@ -21,6 +21,9 @@ Estat: en validació local.
 - Eliminació de fitxers per tutoria i coordinació.
 - Revisió completa de cada recorregut de rol.
 
+- Invitacions d'alumnat amb enllaç i codi temporal, limitades al grup de la
+  tutoria, amb caducitat, límit d'usos, revocació i auditoria.
+
 Abans de tancar la fase 1, ja hi ha una demostració local de:
 
 - Supervisió global amb filtres i mode observador de només lectura.
@@ -53,6 +56,8 @@ Estat: disseny funcional parcial.
 
 Estat: interfície informativa; integració real pendent.
 
+- Flux de selecció de curs i revisió d'alumnat preparat a la interfície de
+  tutoria, sense simular cap importació mentre l'OAuth no estigui autoritzat.
 - Autorització del domini per una persona administradora de Workspace.
 - Vinculació de grups d'El Taulell amb cursos de Classroom.
 - Lectura d'avisos, tasques, dates i enllaços.
