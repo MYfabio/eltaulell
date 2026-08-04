@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { BoardChoice } from "@/lib/board-store";
 import {
   BOARD_THEMES,
@@ -33,6 +34,34 @@ type Note = {
   icon: string;
   link?: string;
 };
+
+type CardPosition = {
+  x: number;
+  y: number;
+};
+
+type CardDragState = {
+  cardKey: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  nextX: number;
+  nextY: number;
+  rect: DOMRect;
+};
+
+type MovableCardStyle = CSSProperties & {
+  "--card-x": string;
+  "--card-y": string;
+};
+
+function isCardPosition(value: unknown): value is CardPosition {
+  if (!value || typeof value !== "object") return false;
+  const position = value as Partial<CardPosition>;
+  return Number.isFinite(position.x) && Number.isFinite(position.y);
+}
 
 const initialNotes: Note[] = [
   {
@@ -129,6 +158,11 @@ export default function BoardClient({
 }) {
   const taskOwnerId = viewer.id === "student-marc" ? "marc-costa" : viewer.id;
   const taskStorageKey = `eltaulell-learning-tasks-${taskOwnerId}`;
+  const cardPositionStorageKey =
+    `eltaulell-card-positions-${viewer.id}-${selectedBoard.groupId}`;
+  const canArrangeBoard = viewer.role === "STUDENT";
+  const boardRef = useRef<HTMLDivElement>(null);
+  const cardDragRef = useRef<CardDragState | null>(null);
   const [notes, setNotes] = useState(initialNotes);
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tot");
   const [chatOpen, setChatOpen] = useState(false);
@@ -148,6 +182,9 @@ export default function BoardClient({
   const [classroomNotice, setClassroomNotice] = useState("");
   const [tasksHydrated, setTasksHydrated] = useState(false);
   const [feedbackTaskId, setFeedbackTaskId] = useState<string | null>(null);
+  const [cardPositions, setCardPositions] = useState<Record<string, CardPosition>>({});
+  const [loadedCardPositionKey, setLoadedCardPositionKey] = useState<string | null>(null);
+  const [draggingCardKey, setDraggingCardKey] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("eltaulell-board-theme");
@@ -178,6 +215,36 @@ export default function BoardClient({
     if (!tasksHydrated) return;
     window.sessionStorage.setItem(taskStorageKey, JSON.stringify(learningTasks));
   }, [learningTasks, taskStorageKey, tasksHydrated]);
+
+  useEffect(() => {
+    if (!canArrangeBoard) {
+      setCardPositions({});
+      setLoadedCardPositionKey(null);
+      return;
+    }
+
+    try {
+      const savedPositions = window.localStorage.getItem(cardPositionStorageKey);
+      const parsedPositions = savedPositions
+        ? (JSON.parse(savedPositions) as Record<string, unknown>)
+        : {};
+      setCardPositions(
+        Object.fromEntries(
+          Object.entries(parsedPositions).filter((entry) => isCardPosition(entry[1])),
+        ) as Record<string, CardPosition>,
+      );
+    } catch {
+      window.localStorage.removeItem(cardPositionStorageKey);
+      setCardPositions({});
+    } finally {
+      setLoadedCardPositionKey(cardPositionStorageKey);
+    }
+  }, [canArrangeBoard, cardPositionStorageKey]);
+
+  useEffect(() => {
+    if (!canArrangeBoard || loadedCardPositionKey !== cardPositionStorageKey) return;
+    window.localStorage.setItem(cardPositionStorageKey, JSON.stringify(cardPositions));
+  }, [canArrangeBoard, cardPositionStorageKey, cardPositions, loadedCardPositionKey]);
 
   const availableNoteTypes = useMemo(
     () =>
@@ -360,6 +427,90 @@ export default function BoardClient({
     setNotes((current) => current.filter((item) => item.id !== id));
   }
 
+  function cardPositionStyle(cardKey: string): MovableCardStyle | undefined {
+    if (!canArrangeBoard) return undefined;
+    const position = cardPositions[cardKey] ?? { x: 0, y: 0 };
+    return {
+      "--card-x": `${position.x}px`,
+      "--card-y": `${position.y}px`,
+    };
+  }
+
+  function startCardDrag(event: ReactPointerEvent<HTMLElement>, cardKey: string) {
+    if (!canArrangeBoard || event.button !== 0) return;
+    const interactiveTarget = (event.target as HTMLElement).closest(
+      "button, a, input, textarea, select, label",
+    );
+    if (interactiveTarget) return;
+
+    const position = cardPositions[cardKey] ?? { x: 0, y: 0 };
+    cardDragRef.current = {
+      cardKey,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: position.x,
+      originY: position.y,
+      nextX: position.x,
+      nextY: position.y,
+      rect: event.currentTarget.getBoundingClientRect(),
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    setDraggingCardKey(cardKey);
+  }
+
+  function moveCard(event: ReactPointerEvent<HTMLElement>) {
+    const dragState = cardDragRef.current;
+    const board = boardRef.current;
+    if (
+      !canArrangeBoard ||
+      !dragState ||
+      !board ||
+      dragState.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const boardRect = board.getBoundingClientRect();
+    const horizontalMove = event.clientX - dragState.startX;
+    const verticalMove = event.clientY - dragState.startY;
+    const edgeSpace = 12;
+    const left = Math.min(
+      Math.max(dragState.rect.left + horizontalMove, boardRect.left + edgeSpace),
+      boardRect.right - dragState.rect.width - edgeSpace,
+    );
+    const top = Math.min(
+      Math.max(dragState.rect.top + verticalMove, boardRect.top + edgeSpace),
+      boardRect.bottom - dragState.rect.height - edgeSpace,
+    );
+    dragState.nextX = Math.round(dragState.originX + left - dragState.rect.left);
+    dragState.nextY = Math.round(dragState.originY + top - dragState.rect.top);
+    event.currentTarget.style.setProperty("--card-x", `${dragState.nextX}px`);
+    event.currentTarget.style.setProperty("--card-y", `${dragState.nextY}px`);
+  }
+
+  function finishCardDrag(event: ReactPointerEvent<HTMLElement>) {
+    const dragState = cardDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setCardPositions((current) => ({
+      ...current,
+      [dragState.cardKey]: { x: dragState.nextX, y: dragState.nextY },
+    }));
+    cardDragRef.current = null;
+    setDraggingCardKey(null);
+  }
+
+  function resetCardPositions() {
+    window.localStorage.removeItem(cardPositionStorageKey);
+    setCardPositions({});
+  }
+
   function updateTaskStatus(taskId: string, status: TaskStatus) {
     const task = learningTasks.find((item) => item.id === taskId);
     if (!task || viewer.role !== "STUDENT") return;
@@ -521,6 +672,15 @@ export default function BoardClient({
               >
                 {resourcesOpen ? "Tancar recursos" : "Obrir recursos"}
               </button>
+              {canArrangeBoard && Object.keys(cardPositions).length > 0 && (
+                <button
+                  className="layout-reset"
+                  onClick={resetCardPositions}
+                  type="button"
+                >
+                  Restablir ordre
+                </button>
+              )}
               <button className="search-button" aria-label="Cercar" type="button">
                 ⌕
               </button>
@@ -560,7 +720,10 @@ export default function BoardClient({
             <p className="action-message" role="status">{actionMessage}</p>
           )}
 
-          <div className="corkboard">
+          <div
+            className={`corkboard${canArrangeBoard ? " student-arrangeable" : ""}`}
+            ref={boardRef}
+          >
             <div className="board-label">
               <span>📌</span> TAULER DE {selectedBoard.groupName.toUpperCase()}
             </div>
@@ -573,8 +736,14 @@ export default function BoardClient({
                     <h2>{taskStatusLabels[status]}</h2>
                     {learningTasks.filter((task) => task.status === status).map((task) => (
                       <article
-                        className={`learning-task status-${status.toLowerCase().replace("_", "-")}${task.overdue ? " overdue" : ""}`}
+                        className={`learning-task status-${status.toLowerCase().replace("_", "-")}${task.overdue ? " overdue" : ""}${canArrangeBoard ? " board-card-movable" : ""}${draggingCardKey === `task:${task.id}` ? " is-dragging" : ""}`}
+                        data-board-card-key={`task:${task.id}`}
                         key={task.id}
+                        onPointerCancel={finishCardDrag}
+                        onPointerDown={(event) => startCardDrag(event, `task:${task.id}`)}
+                        onPointerMove={moveCard}
+                        onPointerUp={finishCardDrag}
+                        style={cardPositionStyle(`task:${task.id}`)}
                       >
                         <header className="task-card-heading">
                           <span aria-hidden="true" className="task-subject-icon">{task.subjectIcon}</span>
@@ -658,8 +827,14 @@ export default function BoardClient({
             <div className="notes-grid" aria-live="polite">
               {visibleNotes.map((note, index) => (
                 <article
-                  className={`note ${note.color} tilt-${(index % 3) + 1}`}
+                  className={`note ${note.color} tilt-${(index % 3) + 1}${canArrangeBoard ? " board-card-movable" : ""}${draggingCardKey === `note:${note.id}` ? " is-dragging" : ""}`}
+                  data-board-card-key={`note:${note.id}`}
                   key={note.id}
+                  onPointerCancel={finishCardDrag}
+                  onPointerDown={(event) => startCardDrag(event, `note:${note.id}`)}
+                  onPointerMove={moveCard}
+                  onPointerUp={finishCardDrag}
+                  style={cardPositionStyle(`note:${note.id}`)}
                 >
                   <span className="pin" />
                   {can(viewer, PERMISSIONS.MODERATE_BOARD) && (

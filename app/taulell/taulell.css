@@ -1961,6 +1961,24 @@ aside {
   color: white;
 }
 
+.layout-reset {
+  border: 1px solid #d9c5b2;
+  border-radius: 8px;
+  background: #fff8ef;
+  padding: 8px 10px;
+  color: #805437;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.layout-reset:hover,
+.layout-reset:focus-visible {
+  border-color: #b77a50;
+  background: #fff1df;
+}
+
 .task-workflow {
   margin-bottom: 15px;
   border: 1px solid #e1e5df;
@@ -2377,6 +2395,52 @@ aside {
 
 .board-task-workflow .task-secondary-action {
   background: rgba(255, 255, 255, 0.68);
+}
+
+.student-arrangeable .board-card-movable {
+  --card-x: 0px;
+  --card-y: 0px;
+  z-index: 2;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+
+.student-arrangeable .note.board-card-movable.tilt-1 {
+  transform: translate3d(var(--card-x), var(--card-y), 0) rotate(-1.2deg);
+}
+
+.student-arrangeable .note.board-card-movable.tilt-2 {
+  transform: translate3d(var(--card-x), var(--card-y), 0) rotate(1.1deg);
+}
+
+.student-arrangeable .note.board-card-movable.tilt-3 {
+  transform: translate3d(var(--card-x), var(--card-y), 0) rotate(-0.6deg);
+}
+
+.student-arrangeable .note.board-card-movable:hover {
+  transform: translate3d(var(--card-x), calc(var(--card-y) - 3px), 0) rotate(0);
+}
+
+.student-arrangeable .board-task-workflow .learning-task.board-card-movable {
+  transform: translate3d(var(--card-x), var(--card-y), 0) rotate(-0.35deg);
+}
+
+.student-arrangeable .board-task-workflow .learning-task.board-card-movable:nth-of-type(even) {
+  transform: translate3d(var(--card-x), var(--card-y), 0) rotate(0.45deg);
+}
+
+.student-arrangeable .board-task-workflow .learning-task.board-card-movable:hover {
+  transform: translate3d(var(--card-x), calc(var(--card-y) - 2px), 0) rotate(0);
+}
+
+.student-arrangeable .board-card-movable.is-dragging,
+.student-arrangeable .board-card-movable.is-dragging:hover {
+  z-index: 30;
+  cursor: grabbing;
+  opacity: 0.58;
+  transition: none;
 }
 
 .dashboard.theme-whiteboard {
