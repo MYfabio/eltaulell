@@ -1,8 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { BoardChoice } from "@/lib/board-store";
+import {
+  BOARD_THEMES,
+  tasksForStudent,
+  type BoardTheme,
+  type LearningTask,
+  type TaskStatus,
+} from "@/lib/demo-insights";
 import type { DemoViewer } from "@/lib/demo-auth";
 import {
   can,
@@ -104,6 +111,13 @@ const noteKindByType: Record<NoteType, PostKind> = {
   Materials: "MATERIAL",
 };
 
+const taskStatusLabels: Record<TaskStatus, string> = {
+  PENDING: "Pendent",
+  IN_PROGRESS: "En curs",
+  DELIVERED: "Lliurada",
+  GRADED: "Qualificada",
+};
+
 export default function BoardClient({
   boards,
   selectedBoard,
@@ -124,6 +138,23 @@ export default function BoardClient({
   const [draftType, setDraftType] = useState<NoteType>("Avisos");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState("");
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>("cork");
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [learningTasks, setLearningTasks] = useState<LearningTask[]>(() =>
+    tasksForStudent(viewer.id === "student-marc" ? "marc-costa" : viewer.id),
+  );
+  const [classroomNotice, setClassroomNotice] = useState("");
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("eltaulell-board-theme");
+    if (BOARD_THEMES.some((theme) => theme.id === savedTheme)) {
+      setBoardTheme(savedTheme as BoardTheme);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("eltaulell-board-theme", boardTheme);
+  }, [boardTheme]);
 
   const availableNoteTypes = useMemo(
     () =>
@@ -306,8 +337,25 @@ export default function BoardClient({
     setNotes((current) => current.filter((item) => item.id !== id));
   }
 
+  function changeTaskStatus(taskId: string, status: TaskStatus) {
+    const task = learningTasks.find((item) => item.id === taskId);
+    if (!task || viewer.role !== "STUDENT") return;
+
+    setLearningTasks((current) =>
+      current.map((item) => (item.id === taskId ? { ...item, status } : item)),
+    );
+
+    if (status === "DELIVERED" && task.classroomLinked) {
+      setClassroomNotice(
+        "Tasca marcada com a lliurada en local. L'enviament real a Classroom s'activarà quan el centre autoritzi Google Workspace.",
+      );
+    } else {
+      setClassroomNotice("Estat de la tasca actualitzat en aquesta vista local.");
+    }
+  }
+
   return (
-    <main className="dashboard">
+    <main className={`dashboard theme-${boardTheme}`}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">T</div>
@@ -372,7 +420,7 @@ export default function BoardClient({
         </div>
       </section>
 
-      <div className="workspace">
+      <div className={resourcesOpen ? "workspace resources-open" : "workspace resources-collapsed"}>
         <section className="board-wrap">
           {boards.length > 1 && (
             <nav aria-label="Seleccionar el tauler del grup" className="board-switcher">
@@ -404,6 +452,26 @@ export default function BoardClient({
               ))}
             </div>
             <div className="board-actions">
+              <label className="theme-control">
+                <span>Estil</span>
+                <select
+                  aria-label="Estil visual del taulell"
+                  onChange={(event) => setBoardTheme(event.target.value as BoardTheme)}
+                  value={boardTheme}
+                >
+                  {BOARD_THEMES.map((theme) => (
+                    <option key={theme.id} value={theme.id}>{theme.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                aria-expanded={resourcesOpen}
+                className="resource-toggle"
+                onClick={() => setResourcesOpen((current) => !current)}
+                type="button"
+              >
+                {resourcesOpen ? "Tancar recursos" : "Obrir recursos"}
+              </button>
               <button className="search-button" aria-label="Cercar" type="button">
                 ⌕
               </button>
@@ -441,6 +509,49 @@ export default function BoardClient({
 
           {actionMessage && (
             <p className="action-message" role="status">{actionMessage}</p>
+          )}
+
+          {viewer.role === "STUDENT" && (
+            <section className="task-workflow" aria-label="Seguiment visual de tasques">
+              <header>
+                <div>
+                  <span>MODE DE TREBALL</span>
+                  <strong>Les meves tasques</strong>
+                  <small>Mou cada activitat al següent estat quan avancis.</small>
+                </div>
+                <em>Classroom: autorització pendent</em>
+              </header>
+              {classroomNotice && <p role="status">{classroomNotice}</p>}
+              <div className="task-columns">
+                {(Object.keys(taskStatusLabels) as TaskStatus[]).map((status) => (
+                  <section key={status}>
+                    <h2>{taskStatusLabels[status]}</h2>
+                    {learningTasks.filter((task) => task.status === status).map((task) => (
+                      <article className={task.overdue ? "learning-task overdue" : "learning-task"} key={task.id}>
+                        <span>{task.subject}</span>
+                        <strong>{task.title}</strong>
+                        <small>{task.dueLabel}</small>
+                        <div>
+                          {task.classroomLinked && <em>Classroom</em>}
+                          {typeof task.grade === "number" && <b>{task.grade.toFixed(1)}</b>}
+                        </div>
+                        {status === "PENDING" && (
+                          <button onClick={() => changeTaskStatus(task.id, "IN_PROGRESS")} type="button">
+                            Començar
+                          </button>
+                        )}
+                        {status === "IN_PROGRESS" && (
+                          <button onClick={() => changeTaskStatus(task.id, "DELIVERED")} type="button">
+                            Marcar com a lliurada
+                          </button>
+                        )}
+                      </article>
+                    ))}
+                    {!learningTasks.some((task) => task.status === status) && <p>Cap tasca.</p>}
+                  </section>
+                ))}
+              </div>
+            </section>
           )}
 
           <div className="corkboard">
@@ -492,7 +603,7 @@ export default function BoardClient({
           </div>
         </section>
 
-        <aside>
+        {resourcesOpen && <aside aria-label="Recursos i agenda desplegables">
           <section className="agenda card">
             <div className="card-title">
               <div>
@@ -557,7 +668,7 @@ export default function BoardClient({
               <p>Pot publicar activitats i crear consultes anònimes.</p>
             </div>
           </section>
-        </aside>
+        </aside>}
       </div>
 
       <button

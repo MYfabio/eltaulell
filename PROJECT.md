@@ -56,10 +56,25 @@ Implementat o preparat:
 - Emmagatzematge privat de fitxers a Railway Bucket.
 - Vista local ràpida per revisar canvis abans de publicar.
 
+Prototipat i validat només en local el 4 d'agost de 2026:
+
+- Supervisió global de coordinació amb filtres per etapa, grup, matèria,
+  tutoria i alumne, més un mode observador que no permet modificar dades.
+- Seguiment tutorial per alumne i matèria, alertes de possible bloqueig i
+  historial de converses amb el Tutor IA reservat als perfils autoritzats.
+- Flux visual de tasques de l'alumnat amb els estats pendent, en curs,
+  lliurada i qualificada.
+- Recursos plegables i quatre estils de taulell: pissarra blanca, guix, suro i
+  mode digital fosc.
+- Dades demostratives estructurades per provar els fluxos. Encara no es
+  consideren persistència de producció ni dades sincronitzades.
+
 Pendent d'implementació real:
 
 - Autenticació de centre amb Google Workspace.
 - Sincronització amb Google Classroom.
+- Persistència PostgreSQL dels nous indicadors, tasques i historials de Tutoria
+  IA, amb política de conservació i accés definida pel centre.
 - Connexió amb Moodle o iEduca mitjançant una API autoritzada.
 - Consultes anònimes persistents i circuit complet de resposta.
 - Calendari persistent i sincronitzat.

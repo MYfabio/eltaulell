@@ -21,7 +21,17 @@ Estat: en validació local.
 - Eliminació de fitxers per tutoria i coordinació.
 - Revisió completa de cada recorregut de rol.
 
-## Fase 2 — Identitat i seguretat de centre
+Abans de tancar la fase 1, ja hi ha una demostració local de:
+
+- Supervisió global amb filtres i mode observador de només lectura.
+- Panell tutorial per alumne i matèria, amb alertes de bloqueig.
+- Historial de Tutoria IA limitat a perfils autoritzats.
+- Tasques personals, recursos plegables i quatre temes visuals.
+
+Aquestes funcions encara necessiten models persistents i proves d'autorització
+abans de passar a producció.
+
+## Fase 2 - Identitat i seguretat de centre
 
 Estat: pendent.
 
@@ -48,7 +58,11 @@ Estat: interfície informativa; integració real pendent.
 - Lectura d'avisos, tasques, dates i enllaços.
 - Sincronització programada i gestió d'errors de permisos.
 
-## Fase 5 — Moodle i iEduca
+La integració final de Classroom també haurà d'incloure el lliurament mitjançant
+`courses.courseWork.studentSubmissions.turnIn` i la sincronització inversa de
+l'estat. La versió local només simula aquest canvi i no envia cap lliurament.
+
+## Fase 5 - Moodle i iEduca
 
 Estat: interfície informativa; integració real pendent.
 
@@ -67,7 +81,11 @@ Estat: demostració d'interfície; servei real pendent.
 - Protocol de seguretat per a consultes de convivència o risc.
 - Historial, supervisió i configuració per centre.
 
-## Fase 7 — Pilot i escalabilitat
+L'historial de Tutoria IA requerirà consentiment o base jurídica adequada,
+retenció limitada, auditoria i una separació clara entre el resum visible per
+coordinació i el contingut complet visible per la tutoria autoritzada.
+
+## Fase 7 - Pilot i escalabilitat
 
 Estat: pendent.
 

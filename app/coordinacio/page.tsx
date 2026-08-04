@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PortalShell from "@/app/components/portal-shell";
 import AdministrationClient from "@/app/coordinacio/administration-client";
+import CoordinationOverview from "@/app/coordinacio/coordination-overview";
 import { getAdminSnapshot } from "@/lib/admin";
 import { requireDemoPermission } from "@/lib/demo-auth";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -48,6 +49,8 @@ export default async function CoordinationPage() {
           </div>
           <p>La coordinació només pot administrar les dades del centre on està assignada.</p>
         </article>
+
+        <CoordinationOverview />
 
         <AdministrationClient initialData={snapshot} />
 
