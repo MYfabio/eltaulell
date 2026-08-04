@@ -317,6 +317,12 @@ export default function BoardExtras({
     setMessage("Fitxer eliminat del tauler.");
   }
 
+  const hasBoardExtras = visiblePolls.length > 0 || attachments.length > 0;
+
+  if (!hasBoardExtras && !canCreatePoll && !canAttach && !message) {
+    return null;
+  }
+
   return (
     <section className="board-extras" aria-label="Enquestes i fitxers del tauler">
       {(canCreatePoll || canAttach) && (
@@ -342,13 +348,9 @@ export default function BoardExtras({
 
       {message && <p className="extras-message" role="status">{message}</p>}
 
-      <div className="board-extras-grid">
-        {!visiblePolls.length && !attachments.length && (
-          <p className="board-extras-empty">
-            Encara no hi ha enquestes ni fitxers en aquest taulell.
-          </p>
-        )}
-        {visiblePolls.map((poll) => {
+      {hasBoardExtras && (
+        <div className="board-extras-grid">
+          {visiblePolls.map((poll) => {
           const totalVotes = poll.options.reduce((total, option) => total + option.votes, 0);
           const showResults =
             poll.status === "PUBLISHED" ||
@@ -473,8 +475,9 @@ export default function BoardExtras({
               )}
             </article>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       {pollModalOpen && (
         <div className="modal-backdrop" role="presentation">
