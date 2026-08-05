@@ -3,6 +3,7 @@ import { ensureDemoSchoolData } from "@/lib/admin";
 import { db } from "@/lib/db";
 import {
   createPersistentSession,
+  canUsePublicDemoRole,
   DEMO_COOKIE,
   DEMO_VIEWERS,
   isDemoAccessEnabled,
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
   const userId = String(formData.get("userId") || "");
   const viewer = DEMO_VIEWERS.find((candidate) => candidate.id === userId);
 
-  if (!viewer) {
+  if (!viewer || !canUsePublicDemoRole(viewer.role)) {
     return NextResponse.json({ error: "Usuari no vàlid" }, { status: 400 });
   }
 

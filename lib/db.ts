@@ -9,7 +9,7 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: DatabaseClient;
 };
 
-const LOCAL_DB_VERSION = 6;
+const LOCAL_DB_VERSION = 7;
 
 function createProductionDb() {
   const require = createRequire(import.meta.url);

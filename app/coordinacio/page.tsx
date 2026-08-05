@@ -3,6 +3,7 @@ import PortalShell from "@/app/components/portal-shell";
 import AdministrationClient from "@/app/coordinacio/administration-client";
 import CoordinationOverview from "@/app/coordinacio/coordination-overview";
 import { getAdminSnapshot } from "@/lib/admin";
+import { isConfiguredCentreAdminEmail } from "@/lib/centre-admin-auth";
 import { requireDemoPermission } from "@/lib/demo-auth";
 import { PERMISSIONS } from "@/lib/permissions";
 
@@ -13,6 +14,7 @@ export default async function CoordinationPage() {
   const snapshot = await getAdminSnapshot(viewer);
   const activePeople = snapshot.people.filter((person) => person.status === "ACTIVE").length;
   const pendingPeople = snapshot.people.filter((person) => person.status === "INVITED").length;
+  const canManageDemoRequests = isConfiguredCentreAdminEmail(viewer.email);
 
   return (
     <PortalShell
@@ -61,6 +63,9 @@ export default async function CoordinationPage() {
             <Link href="/tutoria">Revisar els grups</Link>
             <Link href="/integracions">Configurar integracions</Link>
             <Link href="/taulell">Obrir el tauler</Link>
+            {canManageDemoRequests && (
+              <Link href="/coordinacio/sollicituds-demo">Gestionar sol·licituds de demo</Link>
+            )}
           </div>
         </article>
 

@@ -11,6 +11,13 @@ export interface DatabaseClient {
   auditLog: { create: DbMethod };
   platformAdmin: { upsert: DbMethod };
   platformAuditLog: { create: DbMethod; findMany: DbMethod };
+  demoRequest: {
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findMany: DbMethod;
+    findUnique: DbMethod;
+    update: DbMethod;
+  };
   board: { findMany: DbMethod; upsert: DbMethod };
   postIt: {
     create: DbMethod;
@@ -101,6 +108,7 @@ type LocalState = {
   posts: Row[];
   platformAdmins: Row[];
   platformAuditLogs: Row[];
+  demoRequests: Row[];
   passwordCredentials: Row[];
   schools: Row[];
   sessions: Row[];
@@ -123,6 +131,7 @@ function makeState(): LocalState {
     posts: [],
     platformAdmins: [],
     platformAuditLogs: [],
+    demoRequests: [],
     passwordCredentials: [],
     schools: [],
     sessions: [],
@@ -506,6 +515,48 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
+    demoRequest: {
+      async create({ data }: Row) {
+        const request = {
+          id: randomUUID(),
+          status: "PENDING",
+          invitationExpiresAt: null,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.demoRequests.push(request);
+        persistState();
+        return request;
+      },
+      async deleteMany({ where }: Row) {
+        const before = state.demoRequests.length;
+        state.demoRequests = state.demoRequests.filter((request) => {
+          const olderThan = where.createdAt?.lt;
+          return !olderThan || request.createdAt >= olderThan;
+        });
+        persistState();
+        return { count: before - state.demoRequests.length };
+      },
+      async findMany({ orderBy, take }: Row = {}) {
+        const requests = [...state.demoRequests];
+        if (orderBy?.createdAt === "desc") {
+          requests.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        }
+        return typeof take === "number" ? requests.slice(0, take) : requests;
+      },
+      async findUnique({ where }: Row) {
+        return state.demoRequests.find((request) => request.id === where.id) ?? null;
+      },
+      async update({ where, data }: Row) {
+        const request = state.demoRequests.find((candidate) => candidate.id === where.id);
+        if (!request) throw new Error("Demo request not found");
+        Object.assign(request, data, { updatedAt: now() });
+        persistState();
+        return request;
+      },
+    },
+
     invitation: {
       async create({ data }: Row) {
         if (state.invitations.some((invitation) => invitation.tokenHash === data.tokenHash)) {
@@ -679,7 +730,10 @@ export function createLocalDb(): DatabaseClient {
       async findFirst({ where }: Row) {
         return (
           state.groups.find(
-            (group) => group.id === where.id && (!where.schoolId || group.schoolId === where.schoolId),
+            (group) =>
+              (!where.id || group.id === where.id)
+              && (!where.schoolId || group.schoolId === where.schoolId)
+              && (!where.name || group.name === where.name),
           ) ?? null
         );
       },
@@ -798,16 +852,21 @@ export function createLocalDb(): DatabaseClient {
           Object.entries(where).every(([key, value]) => membership[key] === value),
         ).length;
       },
-      async upsert({ where, create }: Row) {
+      async upsert({ where, create, update }: Row) {
         const key = where.groupId_schoolMembershipId;
         const existing = state.groupMemberships.find(
           (membership) =>
             membership.groupId === key.groupId &&
             membership.schoolMembershipId === key.schoolMembershipId,
         );
-        if (existing) return existing;
+        if (existing) {
+          Object.assign(existing, update);
+          persistState();
+          return existing;
+        }
         const assignment = { id: randomUUID(), createdAt: now(), ...create };
         state.groupMemberships.push(assignment);
+        persistState();
         return assignment;
       },
       async findMany({ where }: Row) {
@@ -831,6 +890,7 @@ export function createLocalDb(): DatabaseClient {
         state.groupMemberships = state.groupMemberships.filter(
           (membership) => membership.schoolMembershipId !== where.schoolMembershipId,
         );
+        persistState();
         return { count: before - state.groupMemberships.length };
       },
       async create({ data }: Row) {
