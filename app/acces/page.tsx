@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  DEMO_VIEWERS,
   getDemoViewer,
   getPlatformDemoViewer,
   isDemoAccessEnabled,
@@ -8,44 +7,8 @@ import {
   PLATFORM_DEMO_ADMIN,
 } from "@/lib/demo-auth";
 import { isCentreAdminLoginConfigured } from "@/lib/centre-admin-auth";
-import {
-  PERMISSION_LABELS,
-  PERMISSIONS,
-  type AppRole,
-  type Permission,
-} from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
-
-const roleDescriptions = {
-  COORDINATOR: "Gestiona persones, grups, permisos i integracions del seu centre.",
-  TUTOR: "Modera el taulell, acompanya el grup i publica avisos i tasques.",
-  DELEGATE: "Representa el grup, proposa activitats i crea consultes.",
-  STUDENT: "Consulta el taulell, les tasques i participa de manera segura.",
-};
-
-const featuredPermissions: Record<AppRole, Permission[]> = {
-  COORDINATOR: [
-    PERMISSIONS.MANAGE_SCHOOL,
-    PERMISSIONS.MANAGE_USERS,
-    PERMISSIONS.MANAGE_GROUPS,
-  ],
-  TUTOR: [
-    PERMISSIONS.CREATE_TASK,
-    PERMISSIONS.MODERATE_BOARD,
-    PERMISSIONS.VIEW_STUDENT_FOLLOWUP,
-  ],
-  DELEGATE: [
-    PERMISSIONS.ARRANGE_BOARD,
-    PERMISSIONS.CREATE_ACTIVITY,
-    PERMISSIONS.CREATE_POLL,
-  ],
-  STUDENT: [
-    PERMISSIONS.ARRANGE_BOARD,
-    PERMISSIONS.VOTE_POLL,
-    PERMISSIONS.USE_ASSISTANT,
-  ],
-};
 
 export default async function AccessPage({
   searchParams,
@@ -77,12 +40,10 @@ export default async function AccessPage({
       </header>
 
       <section className="access-hero">
-        <p>{demoAccessEnabled ? "ENTORN LOCAL · DEMOSTRACIÓ" : "ACCÉS SEGUR"}</p>
-        <h1>{demoAccessEnabled ? "Prova els perfils d'El Taulell." : "Entra al taulell del teu centre."}</h1>
+        <p>ACCÉS SEGUR</p>
+        <h1>Entra al taulell del teu centre.</h1>
         <span>
-          {demoAccessEnabled
-            ? "Els perfils de prova permeten validar els permisos sense utilitzar dades reals."
-            : "Cada persona accedeix únicament al centre, el grup i les funcions que té assignats."}
+          Cada persona accedeix únicament al centre, el grup i les funcions que té assignats.
         </span>
         {currentViewer && (
           <div className="current-session">
@@ -99,6 +60,22 @@ export default async function AccessPage({
           </div>
         )}
       </section>
+
+      {demoAccessEnabled && (
+        <section className="demo-entry-card">
+          <div>
+            <span>ENTORN DE PROVA</span>
+            <h2>Vols veure com funciona El Taulell?</h2>
+            <p>
+              Entra a la demo amb un perfil de coordinació, tutoria, delegació
+              o alumnat. Les dades de prova estan separades dels centres reals.
+            </p>
+          </div>
+          <Link className="demo-entry-button" href="/demo">
+            Provar la demo
+          </Link>
+        </section>
+      )}
 
       <section className="account-access-card">
         <div>
@@ -196,29 +173,6 @@ export default async function AccessPage({
             )}
             <button type="submit">Entrar a l'administració del centre</button>
           </form>
-        </section>
-      )}
-
-      {demoAccessEnabled && (
-        <section className="role-grid" aria-label="Perfils de demostració">
-          {DEMO_VIEWERS.map((viewer) => (
-            <article className={`role-card role-${viewer.role.toLowerCase()}`} key={viewer.id}>
-              <div className="role-avatar">{viewer.initials}</div>
-              <span>{viewer.roleLabel}</span>
-              <h2>{viewer.name}</h2>
-              <p>{roleDescriptions[viewer.role]}</p>
-              <div className="role-permissions" aria-label={`Permisos de ${viewer.roleLabel}`}>
-                {featuredPermissions[viewer.role].map((permission) => (
-                  <span key={permission}>{PERMISSION_LABELS[permission]}</span>
-                ))}
-              </div>
-              <small>{viewer.email}</small>
-              <form action="/api/auth/demo" method="post">
-                <input name="userId" type="hidden" value={viewer.id} />
-                <button type="submit">Entrar com a {viewer.roleLabel.toLowerCase()}</button>
-              </form>
-            </article>
-          ))}
         </section>
       )}
 
