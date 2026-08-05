@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { boardAccessErrorResponse } from "@/lib/access-http";
 import {
   createAttachment,
   deleteAttachment,
@@ -27,20 +28,26 @@ export async function GET(request: Request) {
   const searchParams = new URL(request.url).searchParams;
   const groupId = searchParams.get("groupId");
   const attachmentId = searchParams.get("attachmentId");
-  if (attachmentId) {
-    const attachment = await getAttachment(viewer, attachmentId, groupId);
-    if (!attachment) return new Response("Fitxer no trobat.", { status: 404 });
-    return new Response(Buffer.from(attachment.content), {
-      headers: {
-        "Cache-Control": "private, no-store",
-        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
-        "Content-Length": String(attachment.sizeBytes),
-        "Content-Type": attachment.mimeType,
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+  try {
+    if (attachmentId) {
+      const attachment = await getAttachment(viewer, attachmentId, groupId);
+      if (!attachment) return new Response("Fitxer no trobat.", { status: 404 });
+      return new Response(Buffer.from(attachment.content), {
+        headers: {
+          "Cache-Control": "private, no-store",
+          "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
+          "Content-Length": String(attachment.sizeBytes),
+          "Content-Type": attachment.mimeType,
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
+    return NextResponse.json({ attachments: await listAttachments(viewer, groupId) });
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
   }
-  return NextResponse.json({ attachments: await listAttachments(viewer, groupId) });
 }
 
 export async function POST(request: Request) {
@@ -89,6 +96,8 @@ export async function POST(request: Request) {
       groupId,
     );
   } catch (error) {
+    const accessResponse = boardAccessErrorResponse(error);
+    if (accessResponse) return accessResponse;
     if (error instanceof ObjectStorageConfigurationError) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
@@ -132,7 +141,15 @@ export async function DELETE(request: Request) {
   if (!attachmentId) {
     return NextResponse.json({ error: "Falta el fitxer." }, { status: 400 });
   }
-  if (!(await deleteAttachment(viewer, attachmentId, groupId))) {
+  let deleted: boolean;
+  try {
+    deleted = await deleteAttachment(viewer, attachmentId, groupId);
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+  if (!deleted) {
     return NextResponse.json(
       { error: "No s'ha trobat el fitxer d'aquest grup." },
       { status: 404 },

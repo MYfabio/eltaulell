@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import type { BoardChoice } from "@/lib/board-store";
+import type { BoardChoice, StoredBoardPost } from "@/lib/board-store";
 import {
   BOARD_THEMES,
   tasksForStudent,
@@ -140,6 +140,26 @@ const noteKindByType: Record<NoteType, PostKind> = {
   Materials: "MATERIAL",
 };
 
+const noteTypeByKind: Record<PostKind, NoteType> = {
+  NOTICE: "Avisos",
+  TASK: "Tasques",
+  ACTIVITY: "Activitats",
+  MATERIAL: "Materials",
+};
+
+function noteFromStoredPost(post: StoredBoardPost): Note {
+  const type = noteTypeByKind[post.kind];
+  return {
+    id: post.id,
+    type,
+    title: post.title,
+    body: post.body,
+    meta: post.meta,
+    color: noteStyles[type].color,
+    icon: noteStyles[type].icon,
+  };
+}
+
 const taskStatusLabels: Record<TaskStatus, string> = {
   PENDING: "Pendent",
   IN_PROGRESS: "En curs",
@@ -149,10 +169,12 @@ const taskStatusLabels: Record<TaskStatus, string> = {
 
 export default function BoardClient({
   boards,
+  initialPosts,
   selectedBoard,
   viewer,
 }: {
   boards: BoardChoice[];
+  initialPosts: StoredBoardPost[];
   selectedBoard: BoardChoice;
   viewer: DemoViewer;
 }) {
@@ -164,7 +186,7 @@ export default function BoardClient({
   const boardRef = useRef<HTMLDivElement>(null);
   const cardDragRef = useRef<CardDragState | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const [notes, setNotes] = useState(initialNotes);
+  const [notes, setNotes] = useState(() => initialPosts.map(noteFromStoredPost));
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tot");
   const [chatOpen, setChatOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -377,6 +399,7 @@ export default function BoardClient({
         kind: noteKindByType[draftType],
         title: draftTitle,
         body: draftBody,
+        groupId: selectedBoard.groupId,
       }),
     });
     const result = (await response.json().catch(() => null)) as
@@ -429,6 +452,7 @@ export default function BoardClient({
           kind: noteKindByType[draftType],
           title: draftTitle,
           body: draftBody,
+          groupId: selectedBoard.groupId,
         }),
       },
     );
@@ -466,9 +490,10 @@ export default function BoardClient({
 
   async function archiveNote(id: string) {
     setActionMessage("");
-    const response = await fetch(`/api/board/posts/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    const response = await fetch(
+      `/api/board/posts/${encodeURIComponent(id)}?groupId=${encodeURIComponent(selectedBoard.groupId)}`,
+      { method: "DELETE" },
+    );
     const result = (await response.json().catch(() => null)) as
       | { error?: string }
       | null;

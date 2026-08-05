@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { boardAccessErrorResponse } from "@/lib/access-http";
 import { managePoll } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
@@ -35,7 +36,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Falta l'enquesta." }, { status: 400 });
   }
 
-  const result = await managePoll(viewer, id, parsed.data.action, groupId);
+  let result: Awaited<ReturnType<typeof managePoll>>;
+  try {
+    result = await managePoll(viewer, id, parsed.data.action, groupId);
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
   if ("error" in result) {
     return NextResponse.json(
       {

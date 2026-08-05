@@ -74,7 +74,7 @@ export async function ensureDemoSchoolData(viewer: DemoViewer) {
       },
     });
 
-    await transaction.board.upsert({
+    const board = await transaction.board.upsert({
       where: { groupId: group.id },
       update: {},
       create: {
@@ -83,6 +83,7 @@ export async function ensureDemoSchoolData(viewer: DemoViewer) {
       },
     });
 
+    const demoActorIds: Record<string, string> = {};
     for (const demoPerson of DEMO_VIEWERS) {
       if (demoPerson.schoolSlug !== viewer.schoolSlug) continue;
 
@@ -95,6 +96,7 @@ export async function ensureDemoSchoolData(viewer: DemoViewer) {
           email: demoPerson.email.toLowerCase(),
         },
       });
+      demoActorIds[demoPerson.id] = user.id;
 
       const membership = await transaction.schoolMembership.upsert({
         where: {
@@ -132,6 +134,47 @@ export async function ensureDemoSchoolData(viewer: DemoViewer) {
           },
         });
       }
+    }
+
+    const initialPosts = [
+      {
+        id: `${viewer.schoolSlug}-welcome-notice`,
+        authorId: demoActorIds["tutor-marta"] ?? null,
+        type: "NOTICE" as const,
+        title: "Sortida al Museu de la Ciència",
+        message: "Recordeu portar l'autorització signada abans de divendres.",
+      },
+      {
+        id: `${viewer.schoolSlug}-math-task`,
+        authorId: demoActorIds["tutor-marta"] ?? null,
+        type: "TASK" as const,
+        title: "Matemàtiques · Funcions",
+        message: "Exercicis 12, 13 i 16. Repassa abans l'exemple de la pàgina 84.",
+      },
+      {
+        id: `${viewer.schoolSlug}-sports-activity`,
+        authorId: demoActorIds["delegate-laia"] ?? null,
+        type: "ACTIVITY" as const,
+        title: "Torneig de futbol sala",
+        message: "Inscripcions obertes! Equips de 5 persones. Parleu amb la delegada.",
+      },
+      {
+        id: `${viewer.schoolSlug}-history-material`,
+        authorId: demoActorIds["tutor-marta"] ?? null,
+        type: "MATERIAL" as const,
+        title: "Guia del projecte d'Història",
+        message: "Ja teniu disponible la rúbrica i els materials de suport.",
+      },
+    ];
+    for (const post of initialPosts) {
+      await transaction.postIt.upsert({
+        where: { id: post.id },
+        update: {},
+        create: {
+          ...post,
+          boardId: board.id,
+        },
+      });
     }
 
     return school;

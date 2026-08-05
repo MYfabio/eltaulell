@@ -50,7 +50,7 @@ servidor.
 
 L'endpoint `GET /api/health` permet verificar el desplegament.
 
-Les enquestes, els vots i les metadades dels fitxers es desen a PostgreSQL. En
+Els post-its, les enquestes, els vots i les metadades dels fitxers es desen a PostgreSQL. En
 producció, el contingut dels fitxers es desa en un Railway Bucket privat i es
 serveix des de l'API després de validar l'accés al grup. Els fitxers admesos
 tenen un límit de 5 MB i cada tauler pot conservar fins a 30 fitxers en aquesta

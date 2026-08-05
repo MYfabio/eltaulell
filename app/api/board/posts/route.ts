@@ -1,6 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { AccessControlError } from "@/lib/access-control";
+import { createPost } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { canCreatePost, type PostKind } from "@/lib/permissions";
 
@@ -8,6 +9,7 @@ const postSchema = z.object({
   kind: z.enum(["NOTICE", "TASK", "ACTIVITY", "MATERIAL"]),
   title: z.string().trim().min(1).max(70),
   body: z.string().trim().min(1).max(240),
+  groupId: z.string().trim().min(1).max(100),
 });
 
 export async function POST(request: NextRequest) {
@@ -28,16 +30,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(
-    {
-      post: {
-        id: randomUUID(),
-        kind: parsed.data.kind,
-        title: parsed.data.title,
-        body: parsed.data.body,
-        meta: `${viewer.name} · ${viewer.roleLabel} · ara`,
-      },
-    },
-    { status: 201 },
-  );
+  try {
+    const post = await createPost(viewer, parsed.data, parsed.data.groupId);
+    return NextResponse.json({ post }, { status: 201 });
+  } catch (error) {
+    if (error instanceof AccessControlError) {
+      return NextResponse.json(
+        { error: "No tens accés al tauler d'aquest grup." },
+        { status: error.status },
+      );
+    }
+    throw error;
+  }
 }

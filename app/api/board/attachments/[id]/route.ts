@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { boardAccessErrorResponse } from "@/lib/access-http";
 import { deleteAttachment } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
@@ -25,7 +26,15 @@ export async function DELETE(
     return NextResponse.json({ error: "Falta el fitxer." }, { status: 400 });
   }
 
-  if (!(await deleteAttachment(viewer, id, groupId))) {
+  let deleted: boolean;
+  try {
+    deleted = await deleteAttachment(viewer, id, groupId);
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+  if (!deleted) {
     return NextResponse.json(
       { error: "No s'ha trobat el fitxer d'aquest grup." },
       { status: 404 },

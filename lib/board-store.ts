@@ -2,8 +2,13 @@ import "server-only";
 
 import { createHmac, randomUUID } from "node:crypto";
 import { ensureDemoSchoolData } from "@/lib/admin";
+import {
+  listAccessibleBoards,
+  requireBoardAccess,
+} from "@/lib/access-control";
 import { db } from "@/lib/db";
 import type { DemoViewer } from "@/lib/demo-auth";
+import type { PostKind } from "@/lib/permissions";
 import {
   deleteObject,
   getObject,
@@ -79,62 +84,144 @@ async function accessContext(viewer: DemoViewer) {
   return prepared;
 }
 
-async function boardChoicesForMembership(
-  viewer: DemoViewer,
-  membership: { id: string; role: string; schoolId: string },
-): Promise<BoardChoice[]> {
-  if (viewer.role === "COORDINATOR" && membership.role === "COORDINATOR") {
-    const boards = await db.board.findMany({
-      where: { group: { schoolId: membership.schoolId } },
-      select: { id: true, group: { select: { id: true, name: true } } },
-      orderBy: { group: { name: "asc" } },
-    });
-    return boards.map(
-      (board: { id: string; group: { id: string; name: string } }) => ({
-        boardId: board.id,
-        groupId: board.group.id,
-        groupName: board.group.name,
-      }),
-    );
-  }
-
-  const assignments = await db.groupMembership.findMany({
-    where: { schoolMembershipId: membership.id },
-    select: {
-      group: {
-        select: { id: true, name: true, board: { select: { id: true } } },
-      },
-    },
-    orderBy: { group: { name: "asc" } },
-  });
-  return assignments.flatMap(
-    (assignment: {
-      group: { id: string; name: string; board: { id: string } | null };
-    }) =>
-      assignment.group.board
-        ? [
-            {
-              boardId: assignment.group.board.id,
-              groupId: assignment.group.id,
-              groupName: assignment.group.name,
-            },
-          ]
-        : [],
-  );
-}
-
 export async function listBoardChoices(viewer: DemoViewer): Promise<BoardChoice[]> {
-  const { membership } = await accessContext(viewer);
-  return boardChoicesForMembership(viewer, membership);
+  return listAccessibleBoards(viewer);
 }
 
 async function boardContext(viewer: DemoViewer, requestedGroupId?: string | null) {
-  const { actorId, membership } = await accessContext(viewer);
-  const boards = await boardChoicesForMembership(viewer, membership);
-  const selected =
-    boards.find((board) => board.groupId === requestedGroupId) ?? boards[0];
-  if (!selected) throw new Error("No hi ha cap taulell assignat a aquest perfil.");
-  return { ...selected, actorId };
+  return requireBoardAccess(viewer, requestedGroupId);
+}
+
+type PostRow = {
+  id: string;
+  title: string;
+  message: string;
+  type: PostKind;
+  createdAt: Date;
+  updatedAt: Date;
+  author: { name: string } | null;
+};
+
+export type StoredBoardPost = {
+  id: string;
+  kind: PostKind;
+  title: string;
+  body: string;
+  meta: string;
+};
+
+const postInclude = { author: { select: { name: true } } };
+
+function serializePost(post: PostRow): StoredBoardPost {
+  const changed = post.updatedAt.getTime() > post.createdAt.getTime();
+  return {
+    id: post.id,
+    kind: post.type,
+    title: post.title,
+    body: post.message,
+    meta: `${post.author?.name ?? "Usuari eliminat"} · ${changed ? "editat" : "publicat"}`,
+  };
+}
+
+export async function listPosts(viewer: DemoViewer, groupId?: string | null) {
+  const { boardId } = await boardContext(viewer, groupId);
+  const posts = await db.postIt.findMany({
+    where: { boardId, status: "OPEN" },
+    include: postInclude,
+    orderBy: { createdAt: "desc" },
+  });
+  return posts.map((post: PostRow) => serializePost(post));
+}
+
+export async function createPost(
+  viewer: DemoViewer,
+  data: { kind: PostKind; title: string; body: string },
+  groupId?: string | null,
+) {
+  const { boardId, actorId, access } = await boardContext(viewer, groupId);
+  const post = await db.$transaction(async (transaction) => {
+    const created = await transaction.postIt.create({
+      data: {
+        boardId,
+        authorId: actorId,
+        type: data.kind,
+        title: data.title,
+        message: data.body,
+      },
+      include: postInclude,
+    });
+    await transaction.auditLog.create({
+      data: {
+        schoolId: access.schoolId,
+        actorId,
+        action: "BOARD_POST_CREATED",
+        entityType: "PostIt",
+        entityId: created.id,
+        metadata: { boardId, groupId, type: data.kind },
+      },
+    });
+    return created;
+  });
+  return serializePost(post as PostRow);
+}
+
+export async function updatePost(
+  viewer: DemoViewer,
+  postId: string,
+  data: { kind: PostKind; title: string; body: string },
+  groupId?: string | null,
+) {
+  const { boardId, actorId, access } = await boardContext(viewer, groupId);
+  return db.$transaction(async (transaction) => {
+    const updated = await transaction.postIt.updateMany({
+      where: { id: postId, boardId, status: "OPEN" },
+      data: { type: data.kind, title: data.title, message: data.body },
+    });
+    if (!updated.count) return null;
+
+    const post = await transaction.postIt.findFirst({
+      where: { id: postId, boardId, status: "OPEN" },
+      include: postInclude,
+    });
+    await transaction.auditLog.create({
+      data: {
+        schoolId: access.schoolId,
+        actorId,
+        action: "BOARD_POST_UPDATED",
+        entityType: "PostIt",
+        entityId: postId,
+        metadata: { boardId, groupId, type: data.kind },
+      },
+    });
+    return post ? serializePost(post as PostRow) : null;
+  });
+}
+
+export async function archivePost(
+  viewer: DemoViewer,
+  postId: string,
+  groupId?: string | null,
+) {
+  const { boardId, actorId, access } = await boardContext(viewer, groupId);
+  return db.$transaction(async (transaction) => {
+    const updated = await transaction.postIt.updateMany({
+      where: { id: postId, boardId, status: "OPEN" },
+      data: { status: "ARCHIVED" },
+    });
+    if (!updated.count) return false;
+
+    await transaction.auditLog.create({
+      data: {
+        schoolId: access.schoolId,
+        actorId,
+        action: "BOARD_POST_ARCHIVED",
+        entityType: "PostIt",
+        entityId: postId,
+        metadata: { boardId, groupId },
+      },
+    });
+    return true;
+  });
 }
 
 function anonymousVoterKey(viewer: DemoViewer) {

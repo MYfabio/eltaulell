@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { AccessControlError } from "@/lib/access-control";
+import { archivePost, updatePost } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import {
   can,
@@ -12,6 +14,7 @@ const postSchema = z.object({
   kind: z.enum(["NOTICE", "TASK", "ACTIVITY", "MATERIAL"]),
   title: z.string().trim().min(1).max(70),
   body: z.string().trim().min(1).max(240),
+  groupId: z.string().trim().min(1).max(100),
 });
 
 export async function PATCH(
@@ -46,19 +49,28 @@ export async function PATCH(
     return NextResponse.json({ error: "Falta la publicació." }, { status: 400 });
   }
 
-  return NextResponse.json({
-    post: {
-      id,
-      kind: parsed.data.kind,
-      title: parsed.data.title,
-      body: parsed.data.body,
-      meta: `${viewer.name} · ${viewer.roleLabel} · editat ara`,
-    },
-  });
+  try {
+    const post = await updatePost(viewer, id, parsed.data, parsed.data.groupId);
+    if (!post) {
+      return NextResponse.json(
+        { error: "No s'ha trobat la publicació d'aquest grup." },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json({ post });
+  } catch (error) {
+    if (error instanceof AccessControlError) {
+      return NextResponse.json(
+        { error: "No tens accés al tauler d'aquest grup." },
+        { status: error.status },
+      );
+    }
+    throw error;
+  }
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const viewer = await getDemoViewer();
@@ -78,5 +90,25 @@ export async function DELETE(
     return NextResponse.json({ error: "Falta la publicació." }, { status: 400 });
   }
 
-  return NextResponse.json({ archived: true, id });
+  const groupId = new URL(request.url).searchParams.get("groupId");
+  if (!groupId) {
+    return NextResponse.json({ error: "Falta el grup del tauler." }, { status: 400 });
+  }
+  try {
+    if (!(await archivePost(viewer, id, groupId))) {
+      return NextResponse.json(
+        { error: "No s'ha trobat la publicació d'aquest grup." },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json({ archived: true, id });
+  } catch (error) {
+    if (error instanceof AccessControlError) {
+      return NextResponse.json(
+        { error: "No tens accés al tauler d'aquest grup." },
+        { status: error.status },
+      );
+    }
+    throw error;
+  }
 }
