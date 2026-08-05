@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   permissionsForRole,
 } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { isSessionUsable } from "@/lib/session-policy";
 
 export type DemoRole = AppRole;
 
@@ -35,7 +36,41 @@ export type PlatformDemoViewer = {
 };
 
 export const DEMO_COOKIE = "eltaulell_demo_session";
+export const SESSION_COOKIE = "eltaulell_session";
 export const PLATFORM_DEMO_COOKIE = "eltaulell_platform_demo_session";
+
+const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+
+type DatabaseSessionRow = {
+  id: string;
+  userId: string;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  lastSeenAt: Date;
+  user: { id: string; name: string; email: string };
+  schoolMembership: {
+    id: string;
+    userId: string;
+    role: DemoRole;
+    status: "INVITED" | "ACTIVE" | "SUSPENDED";
+    school: { id: string; name: string; slug: string; active: boolean };
+    groupMemberships: Array<{ group: { id: string; name: string } }>;
+  } | null;
+};
+
+export type ViewerSession = {
+  sessionId: string;
+  expiresAt: Date;
+  viewer: DemoViewer;
+};
+
+const ROLE_LABELS: Record<DemoRole, string> = {
+  COORDINATOR: "Coordinador/a",
+  TUTOR: "Tutor/a",
+  DELEGATE: "Delegat/ada",
+  STUDENT: "Alumne/a",
+};
 
 export const PLATFORM_DEMO_ADMIN: PlatformDemoViewer = {
   id: "platform-admin-demo",
@@ -119,6 +154,109 @@ export function createDemoSession(userId: string) {
   return `${payload}.${sign(payload)}`;
 }
 
+function hashSessionToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function createPersistentSession(
+  userId: string,
+  schoolMembershipId: string,
+) {
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+  await db.session.create({
+    data: {
+      userId,
+      schoolMembershipId,
+      tokenHash: hashSessionToken(token),
+      expiresAt,
+    },
+  });
+  return { token, expiresAt };
+}
+
+async function readPersistentSession(token: string): Promise<ViewerSession | null> {
+  const session = await db.session.findUnique({
+    where: { tokenHash: hashSessionToken(token) },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      schoolMembership: {
+        include: {
+          school: { select: { id: true, name: true, slug: true, active: true } },
+          groupMemberships: {
+            include: { group: { select: { id: true, name: true } } },
+            orderBy: { group: { name: "asc" } },
+          },
+        },
+      },
+    },
+  }) as DatabaseSessionRow | null;
+
+  const membership = session?.schoolMembership;
+  if (
+    !session ||
+    !membership ||
+    !isSessionUsable({
+      expiresAt: session.expiresAt,
+      revokedAt: session.revokedAt,
+      sessionUserId: session.userId,
+      membershipUserId: membership.userId,
+      membershipStatus: membership.status,
+      schoolActive: membership.school.active,
+    })
+  ) {
+    return null;
+  }
+
+  if (Date.now() - session.lastSeenAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
+    await db.session.update({
+      where: { id: session.id },
+      data: { lastSeenAt: new Date() },
+    });
+  }
+
+  const nameParts = session.user.name.trim().split(/\s+/).filter(Boolean);
+  const groupName = membership.role === "COORDINATOR"
+    ? "Tots els grups"
+    : membership.groupMemberships[0]?.group.name || "Sense grup assignat";
+  const viewer: DemoViewer = {
+    id: session.user.id,
+    name: session.user.name,
+    firstName: nameParts[0] || session.user.name,
+    initials: nameParts.slice(0, 2).map((part) => part[0]).join("").toUpperCase(),
+    email: session.user.email,
+    role: membership.role,
+    roleLabel: ROLE_LABELS[membership.role],
+    school: membership.school.name,
+    schoolSlug: membership.school.slug,
+    groupName,
+    permissions: permissionsForRole(membership.role),
+  };
+
+  return { sessionId: session.id, expiresAt: session.expiresAt, viewer };
+}
+
+export async function getViewerSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  return token ? readPersistentSession(token) : null;
+}
+
+export async function revokePersistentSession(token?: string) {
+  if (!token) return;
+  await db.session.updateMany({
+    where: { tokenHash: hashSessionToken(token), revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}
+
+export async function revokeMembershipSessions(schoolMembershipId: string) {
+  await db.session.updateMany({
+    where: { schoolMembershipId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}
+
 function verifySessionSubject(token?: string) {
   if (!token) return null;
   const [payload, suppliedSignature] = token.split(".");
@@ -165,6 +303,10 @@ export function verifyPlatformDemoSession(token?: string) {
 
 export async function getDemoViewer() {
   const cookieStore = await cookies();
+  const persistentToken = cookieStore.get(SESSION_COOKIE)?.value;
+  if (persistentToken) {
+    return (await readPersistentSession(persistentToken))?.viewer || null;
+  }
   const viewer = verifyDemoSession(cookieStore.get(DEMO_COOKIE)?.value);
   if (!viewer) return null;
   const school = await db.school.findFirst({

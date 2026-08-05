@@ -4,6 +4,7 @@ import {
   DEMO_COOKIE,
   isPlatformDemoEnabled,
   PLATFORM_DEMO_COOKIE,
+  SESSION_COOKIE,
 } from "@/lib/demo-auth";
 
 export async function POST() {
@@ -26,5 +27,6 @@ export async function POST() {
     path: "/",
   });
   response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(SESSION_COOKIE, "", { expires: new Date(0), path: "/" });
   return response;
 }

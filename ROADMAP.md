@@ -43,7 +43,12 @@ producció.
 
 ## Fase 2 - Identitat i seguretat de centre
 
-Estat: pendent.
+Estat: en desenvolupament.
+
+- Sessions persistents vinculades a una matrícula activa, amb caducitat,
+  revocació en sortir i bloqueig immediat quan se suspèn la persona o el centre.
+- La sessió ja llegeix el rol, el centre i els grups des de PostgreSQL; deixa
+  preparada la mateixa entrada per al futur OAuth de Google Workspace.
 
 - Accés real amb Google Workspace for Education.
 - Alta controlada per domini, invitació i estat de membre.
