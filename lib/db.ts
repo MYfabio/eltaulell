@@ -1,6 +1,8 @@
 import { createRequire } from "node:module";
 import { createLocalDb, type DatabaseClient } from "@/lib/local-db";
 
+export type { DatabaseClient } from "@/lib/local-db";
+
 const globalForPrisma = globalThis as unknown as {
   localDb?: DatabaseClient;
   localDbVersion?: number;

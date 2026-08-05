@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getPlatformDemoViewer } from "@/lib/demo-auth";
 import { db } from "@/lib/db";
 import { getPlatformAdminId } from "@/lib/platform-admin";
+import { issueAccountInvitation } from "@/lib/account-auth";
 
 const optionalDomain = z.string().trim().max(120).transform((value) => value || null);
 
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
   const data = parsed.data;
   try {
     const platformAdminId = await getPlatformAdminId(viewer);
-    const school = await db.$transaction(async (transaction) => {
+    const result = await db.$transaction(async (transaction) => {
       const created = await transaction.school.create({
         data: {
           name: data.name,
@@ -56,8 +57,13 @@ export async function POST(request: NextRequest) {
           schoolId: created.id,
           userId: coordinator.id,
           role: "COORDINATOR",
-          status: "ACTIVE",
+          status: "INVITED",
         },
+      });
+      const invitation = await issueAccountInvitation(transaction, {
+        schoolId: created.id,
+        email: data.coordinatorEmail,
+        role: "COORDINATOR",
       });
       await transaction.platformAuditLog.create({
         data: {
@@ -74,9 +80,16 @@ export async function POST(request: NextRequest) {
           },
         },
       });
-      return created;
+      return { school: created, invitation };
     });
-    return NextResponse.json({ schoolId: school.id }, { status: 201 });
+    return NextResponse.json(
+      {
+        schoolId: result.school.id,
+        activationPath: `/activar?token=${encodeURIComponent(result.invitation.token)}`,
+        expiresAt: result.invitation.expiresAt.toISOString(),
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
       return NextResponse.json(

@@ -7,9 +7,10 @@ el calendari i els accessos a les eines educatives en un únic espai.
 
 El projecte inclou una base multi-centre amb quatre perfils —coordinació,
 tutoria, delegació i alumnat—, permisos per rol, gestió de persones i grups,
-enquestes moderades i fitxers del tauler. L'accés actual és de demostració;
-l'autenticació real amb Google Workspace, Classroom i Moodle encara forma part
-del full de ruta.
+enquestes moderades i fitxers del tauler. El pilot ja disposa d'accés real amb
+invitació, contrasenya xifrada, sessió persistent i entrada directa segons el
+perfil. L'autenticació institucional amb Google Workspace i les connexions amb
+Classroom i Moodle encara formen part del full de ruta.
 
 Tutoria i coordinació també poden crear invitacions temporals per grup amb un
 enllaç i un codi separat, limitar-ne els usos i revocar-les. La importació de
@@ -20,6 +21,9 @@ La vista local inclou una administració general separada dels rols de centre.
 Permet donar d'alta centres amb la seva coordinació inicial, definir plans i
 límits, suspendre o reactivar l'accés i consultar una auditoria global. Aquest
 accés de demostració no s'exposa en producció sense activar-lo explícitament.
+En donar d'alta un centre o una persona es genera un enllaç d'activació d'un sol
+ús. La persona crea la seva contrasenya i el compte només passa a actiu després
+de completar aquest pas.
 
 Consulta [PROJECT.md](./PROJECT.md) per entendre l'abast i les decisions del
 projecte, i [ROADMAP.md](./ROADMAP.md) per veure què està fet i què falta.

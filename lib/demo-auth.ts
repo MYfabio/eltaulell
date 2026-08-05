@@ -24,6 +24,7 @@ export type DemoViewer = {
   schoolSlug: string;
   groupName: string;
   permissions: Permission[];
+  mode: "demo" | "account";
 };
 
 export type PlatformDemoViewer = {
@@ -94,6 +95,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     schoolSlug: "institut-can-roca",
     groupName: "Tots els grups",
     permissions: permissionsForRole("COORDINATOR"),
+    mode: "demo",
   },
   {
     id: "tutor-marta",
@@ -107,6 +109,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     schoolSlug: "institut-can-roca",
     groupName: "3r B",
     permissions: permissionsForRole("TUTOR"),
+    mode: "demo",
   },
   {
     id: "delegate-laia",
@@ -120,6 +123,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     schoolSlug: "institut-can-roca",
     groupName: "3r B",
     permissions: permissionsForRole("DELEGATE"),
+    mode: "demo",
   },
   {
     id: "student-marc",
@@ -133,6 +137,7 @@ export const DEMO_VIEWERS: DemoViewer[] = [
     schoolSlug: "institut-can-roca",
     groupName: "3r B",
     permissions: permissionsForRole("STUDENT"),
+    mode: "demo",
   },
 ];
 
@@ -231,6 +236,9 @@ async function readPersistentSession(token: string): Promise<ViewerSession | nul
     schoolSlug: membership.school.slug,
     groupName,
     permissions: permissionsForRole(membership.role),
+    mode: DEMO_VIEWERS.some(
+      (demoViewer) => demoViewer.email.toLowerCase() === session.user.email.toLowerCase(),
+    ) ? "demo" : "account",
   };
 
   return { sessionId: session.id, expiresAt: session.expiresAt, viewer };
@@ -288,6 +296,11 @@ export function verifyDemoSession(token?: string) {
 export function isPlatformDemoEnabled() {
   return process.env.ELTAULELL_LOCAL_PREVIEW === "1" ||
     process.env.PLATFORM_ADMIN_DEMO_ENABLED === "1";
+}
+
+export function isDemoAccessEnabled() {
+  return process.env.ELTAULELL_LOCAL_PREVIEW === "1" ||
+    process.env.DEMO_ACCESS_ENABLED === "1";
 }
 
 export function createPlatformDemoSession() {

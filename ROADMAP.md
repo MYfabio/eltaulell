@@ -49,6 +49,12 @@ Estat: en desenvolupament.
   revocació en sortir i bloqueig immediat quan se suspèn la persona o el centre.
 - La sessió ja llegeix el rol, el centre i els grups des de PostgreSQL; deixa
   preparada la mateixa entrada per al futur OAuth de Google Workspace.
+- Accés real de pilot amb correu i contrasenya, hash `scrypt`, bloqueig per
+  intents fallits i sessions persistents.
+- Invitacions d'activació d'un sol ús per a la coordinació inicial i per a les
+  persones del centre. La matrícula es manté pendent fins a l'activació.
+- Separació estricta entre producció i demostració: els perfils i les dades de
+  mostra només s'habiliten en local.
 
 - Accés real amb Google Workspace for Education.
 - Alta controlada per domini, invitació i estat de membre.
@@ -115,8 +121,8 @@ Estat: pendent.
 
 ## Prioritat immediata
 
-1. Revisar en local el nou panell d'administració general.
+1. Validar l'accés real de pilot amb un grup de l'Escola Industrial.
 2. Persistir les tasques personals, els indicadors i l'historial de Tutoria IA.
-3. Preparar l'accés real amb Google Workspace i la protecció reforçada del
+3. Preparar l'accés institucional amb Google Workspace i la protecció reforçada del
    compte d'administració general.
 4. Preparar una pull request i desplegar només després de l'aprovació.

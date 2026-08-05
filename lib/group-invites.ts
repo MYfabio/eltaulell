@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { ensureDemoSchoolData, getActorId } from "@/lib/admin";
+import { getActorId, getSchoolForViewer } from "@/lib/admin";
 import { listBoardChoices } from "@/lib/board-store";
 import { db } from "@/lib/db";
 import type { DemoViewer } from "@/lib/demo-auth";
@@ -98,7 +98,7 @@ function summarizeInvite(invite: InviteRow, groupName: string): GroupInviteSumma
 }
 
 export async function listGroupInvites(viewer: DemoViewer) {
-  const school = await ensureDemoSchoolData(viewer);
+  const school = await getSchoolForViewer(viewer);
   const groups = await inviteGroupsFor(viewer);
   const rows = await Promise.all(
     groups.map(async (group) => ({
@@ -119,7 +119,7 @@ export async function createGroupInvite(
   input: { groupId: string; expiresInDays: number; maxUses: number },
 ) {
   const group = await assertManageableGroup(viewer, input.groupId);
-  const school = await ensureDemoSchoolData(viewer);
+  const school = await getSchoolForViewer(viewer);
   const createdById = await getActorId(viewer);
   const id = randomUUID();
   const code = generateCode();
@@ -154,7 +154,7 @@ export async function createGroupInvite(
 }
 
 export async function revokeGroupInvite(viewer: DemoViewer, inviteId: string) {
-  const school = await ensureDemoSchoolData(viewer);
+  const school = await getSchoolForViewer(viewer);
   const invite = await db.groupInvite.findFirst({
     where: { id: inviteId, schoolId: school.id },
   }) as InviteRow | null;
@@ -194,7 +194,7 @@ export async function publicGroupInvite(inviteId: string) {
 
 export async function acceptGroupInvite(viewer: DemoViewer, inviteId: string, code: string) {
   if (viewer.role !== "STUDENT") throw new Error("STUDENT_REQUIRED");
-  const school = await ensureDemoSchoolData(viewer);
+  const school = await getSchoolForViewer(viewer);
   const invite = await db.groupInvite.findFirst({
     where: { id: inviteId, schoolId: school.id },
   }) as InviteRow | null;

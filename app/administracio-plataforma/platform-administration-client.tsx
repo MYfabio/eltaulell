@@ -132,6 +132,7 @@ export default function PlatformAdministrationClient({ initialData }: { initialD
   const [coordinatorEmail, setCoordinatorEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [activationLink, setActivationLink] = useState("");
 
   const schools = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -151,6 +152,7 @@ export default function PlatformAdministrationClient({ initialData }: { initialD
     event.preventDefault();
     setBusy(true);
     setMessage("");
+    setActivationLink("");
     const response = await fetch("/api/platform/schools", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -170,6 +172,7 @@ export default function PlatformAdministrationClient({ initialData }: { initialD
       setBusy(false);
       return;
     }
+    const body = await response.json();
     setName("");
     setSlug("");
     setSlugEdited(false);
@@ -179,7 +182,8 @@ export default function PlatformAdministrationClient({ initialData }: { initialD
     setMaxGroups(30);
     setCoordinatorName("");
     setCoordinatorEmail("");
-    setMessage("Centre creat i coordinació inicial assignada.");
+    setActivationLink(new URL(body.activationPath, window.location.origin).toString());
+    setMessage("Centre creat. Envia l'enllaç d'activació a la coordinació inicial.");
     setBusy(false);
     setShowCreate(false);
     router.refresh();
@@ -225,7 +229,19 @@ export default function PlatformAdministrationClient({ initialData }: { initialD
         </form>
       )}
 
-      {!showCreate && message && <p className="platform-form-message" role="status">{message}</p>}
+      {!showCreate && message && (
+        <div className="platform-activation-result" role="status">
+          <p className="platform-form-message">{message}</p>
+          {activationLink && (
+            <div className="activation-link-result">
+              <input aria-label="Enllaç d'activació de coordinació" readOnly value={activationLink} />
+              <button onClick={() => navigator.clipboard.writeText(activationLink)} type="button">
+                Copiar enllaç
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="platform-school-list">
         {schools.map((school) => <SchoolRow key={school.id} school={school} />)}

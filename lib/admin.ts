@@ -192,11 +192,13 @@ function auditDetail(action: string, metadata: unknown) {
   if (action === "GROUP_INVITE_CREATED") return `Invitació creada per al grup ${String(data.groupName || "")}`;
   if (action === "GROUP_INVITE_REVOKED") return "Invitació de grup revocada";
   if (action === "GROUP_INVITE_ACCEPTED") return "Alumne incorporat mitjançant una invitació";
+  if (action === "ACCOUNT_INVITATION_CREATED") return `Accés preparat per a ${String(data.email || "persona")}`;
+  if (action === "ACCOUNT_ACTIVATED") return `Compte activat per ${String(data.email || "persona")}`;
   return "Canvi administratiu";
 }
 
 export async function getAdminSnapshot(viewer: DemoViewer): Promise<AdminSnapshot> {
-  const school = await ensureDemoSchoolData(viewer);
+  const school = await getSchoolForAdmin(viewer);
   const data = await db.school.findUniqueOrThrow({
     where: { id: school.id },
     include: {
@@ -257,7 +259,47 @@ export async function getAdminSnapshot(viewer: DemoViewer): Promise<AdminSnapsho
 }
 
 export async function getSchoolForAdmin(viewer: DemoViewer) {
-  return ensureDemoSchoolData(viewer);
+  const school = await getSchoolForViewer(viewer);
+  const user = await db.user.findUnique({
+    where: { email: viewer.email.toLowerCase() },
+    select: { id: true },
+  });
+  if (!user) throw new Error("SCHOOL_MEMBERSHIP_REQUIRED");
+
+  const membership = await db.schoolMembership.findFirst({
+    where: {
+      userId: user.id,
+      role: "COORDINATOR",
+      status: "ACTIVE",
+      schoolId: school.id,
+    },
+    select: { schoolId: true },
+  });
+  if (!membership) throw new Error("SCHOOL_MEMBERSHIP_REQUIRED");
+
+  return school;
+}
+
+export async function getSchoolForViewer(viewer: DemoViewer) {
+  if (viewer.mode === "demo") return ensureDemoSchoolData(viewer);
+
+  const user = await db.user.findUnique({
+    where: { email: viewer.email.toLowerCase() },
+    select: { id: true },
+  });
+  if (!user) throw new Error("SCHOOL_MEMBERSHIP_REQUIRED");
+
+  const membership = await db.schoolMembership.findFirst({
+    where: {
+      userId: user.id,
+      status: "ACTIVE",
+      school: { slug: viewer.schoolSlug, active: true },
+    },
+    select: { schoolId: true },
+  });
+  if (!membership) throw new Error("SCHOOL_MEMBERSHIP_REQUIRED");
+
+  return db.school.findUniqueOrThrow({ where: { id: membership.schoolId } });
 }
 
 export async function getActorId(viewer: DemoViewer) {

@@ -5,6 +5,7 @@ import {
   createPersistentSession,
   DEMO_COOKIE,
   DEMO_VIEWERS,
+  isDemoAccessEnabled,
   PLATFORM_DEMO_COOKIE,
   SESSION_COOKIE,
   type DemoRole,
@@ -18,6 +19,12 @@ const ROLE_HOME: Record<DemoRole, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  if (!isDemoAccessEnabled()) {
+    return NextResponse.json(
+      { error: "La demostració no està disponible en aquest entorn." },
+      { status: 404 },
+    );
+  }
   const formData = await request.formData();
   const userId = String(formData.get("userId") || "");
   const viewer = DEMO_VIEWERS.find((candidate) => candidate.id === userId);
