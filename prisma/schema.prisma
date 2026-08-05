@@ -148,6 +148,7 @@ model SchoolMembership {
   school           School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   groupMemberships GroupMembership[]
+  sessions         Session[]
 
   @@unique([schoolId, userId])
   @@index([schoolId, role])
@@ -358,15 +359,20 @@ model OAuthAccount {
 }
 
 model Session {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  lastSeenAt DateTime @default(now())
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String            @id @default(cuid())
+  userId             String
+  schoolMembershipId String?
+  tokenHash          String            @unique
+  expiresAt          DateTime
+  revokedAt          DateTime?
+  lastSeenAt         DateTime          @default(now())
+  createdAt          DateTime          @default(now())
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolMembership   SchoolMembership? @relation(fields: [schoolMembershipId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+  @@index([schoolMembershipId, expiresAt])
+  @@index([revokedAt, expiresAt])
 }
 
 model Invitation {

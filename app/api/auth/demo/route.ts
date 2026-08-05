@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ensureDemoSchoolData } from "@/lib/admin";
+import { db } from "@/lib/db";
 import {
-  createDemoSession,
+  createPersistentSession,
   DEMO_COOKIE,
   DEMO_VIEWERS,
+  PLATFORM_DEMO_COOKIE,
+  SESSION_COOKIE,
   type DemoRole,
 } from "@/lib/demo-auth";
 
@@ -22,16 +26,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Usuari no vàlid" }, { status: 400 });
   }
 
+  await ensureDemoSchoolData(viewer);
+  const user = await db.user.findUnique({
+    where: { email: viewer.email.toLowerCase() },
+    select: { id: true },
+  });
+  const membership = user
+    ? await db.schoolMembership.findFirst({
+        where: {
+          userId: user.id,
+          role: viewer.role,
+          status: "ACTIVE",
+          school: { slug: viewer.schoolSlug, active: true },
+        },
+        select: { id: true },
+      })
+    : null;
+
+  if (!user || !membership) {
+    return NextResponse.json(
+      { error: "Aquest perfil no té una matrícula activa." },
+      { status: 403 },
+    );
+  }
+
+  const session = await createPersistentSession(user.id, membership.id);
   const response = new NextResponse(null, {
     status: 303,
     headers: { Location: ROLE_HOME[viewer.role] },
   });
-  response.cookies.set(DEMO_COOKIE, createDemoSession(viewer.id), {
+  response.cookies.set(SESSION_COOKIE, session.token, {
     httpOnly: true,
-    maxAge: 8 * 60 * 60,
+    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
   });
+  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
   return response;
 }

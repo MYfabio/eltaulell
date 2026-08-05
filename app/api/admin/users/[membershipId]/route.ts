@@ -85,6 +85,12 @@ export async function PATCH(
           data: { groupId, schoolMembershipId: existing.id, role: groupRole },
         });
       }
+      if (status === "SUSPENDED") {
+        await transaction.session.updateMany({
+          where: { schoolMembershipId: existing.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
       await transaction.auditLog.create({
         data: {
           schoolId: school.id,

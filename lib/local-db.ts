@@ -66,6 +66,12 @@ export interface DatabaseClient {
     update: DbMethod;
     upsert: DbMethod;
   };
+  session: {
+    create: DbMethod;
+    findUnique: DbMethod;
+    update: DbMethod;
+    updateMany: DbMethod;
+  };
   user: { findUnique: DbMethod; upsert: DbMethod };
 }
 
@@ -83,6 +89,7 @@ type LocalState = {
   platformAdmins: Row[];
   platformAuditLogs: Row[];
   schools: Row[];
+  sessions: Row[];
   users: Row[];
   votes: Row[];
 };
@@ -102,6 +109,7 @@ function makeState(): LocalState {
     platformAdmins: [],
     platformAuditLogs: [],
     schools: [],
+    sessions: [],
     users: [],
     votes: [],
   };
@@ -162,6 +170,30 @@ export function createLocalDb(): DatabaseClient {
     state.groups.find((group) => group.id === id) ?? null;
   const boardByGroupId = (groupId: string) =>
     state.boards.find((board) => board.groupId === groupId) ?? null;
+  const membershipById = (id: string | null | undefined) =>
+    state.memberships.find((membership) => membership.id === id) ?? null;
+
+  function sessionResult(session: Row) {
+    const membership = membershipById(session.schoolMembershipId);
+    const school = schoolById(membership?.schoolId);
+    return {
+      ...session,
+      user: userById(session.userId),
+      schoolMembership: membership && school
+        ? {
+            ...membership,
+            school,
+            groupMemberships: state.groupMemberships
+              .filter((assignment) => assignment.schoolMembershipId === membership.id)
+              .flatMap((assignment) => {
+                const group = groupById(assignment.groupId);
+                return group ? [{ group }] : [];
+              })
+              .sort((a, b) => a.group.name.localeCompare(b.group.name)),
+          }
+        : null,
+    };
+  }
 
   const postResult = (post: Row) => ({
     ...post,
@@ -349,6 +381,48 @@ export function createLocalDb(): DatabaseClient {
               school: schoolById(entry.schoolId),
             };
           });
+      },
+    },
+
+    session: {
+      async create({ data }: Row) {
+        if (state.sessions.some((session) => session.tokenHash === data.tokenHash)) {
+          throw uniqueError("Session token already exists");
+        }
+        const session = {
+          id: randomUUID(),
+          revokedAt: null,
+          createdAt: now(),
+          lastSeenAt: now(),
+          ...data,
+        };
+        state.sessions.push(session);
+        return session;
+      },
+      async findUnique({ where }: Row) {
+        const session = state.sessions.find((candidate) =>
+          where.id ? candidate.id === where.id : candidate.tokenHash === where.tokenHash,
+        );
+        return session ? sessionResult(session) : null;
+      },
+      async update({ where, data }: Row) {
+        const session = state.sessions.find((candidate) => candidate.id === where.id);
+        if (!session) throw new Error("Session not found");
+        Object.assign(session, data);
+        return session;
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.sessions.filter((session) => {
+          if (where.tokenHash && session.tokenHash !== where.tokenHash) return false;
+          if (where.schoolMembershipId && session.schoolMembershipId !== where.schoolMembershipId) {
+            return false;
+          }
+          if (where.userId && session.userId !== where.userId) return false;
+          if (where.revokedAt === null && session.revokedAt !== null) return false;
+          return true;
+        });
+        matches.forEach((session) => Object.assign(session, data));
+        return { count: matches.length };
       },
     },
 

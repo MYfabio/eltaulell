@@ -7,6 +7,7 @@ import {
   canViewStudent,
 } from "../lib/access-policy.ts";
 import { can, canCreatePost, PERMISSIONS } from "../lib/permissions.ts";
+import { isSessionUsable } from "../lib/session-policy.ts";
 
 const subjects = {
   coordinator: {
@@ -117,4 +118,42 @@ test("the role permission matrix blocks student publishing and delegate moderati
   assert.equal(can("DELEGATE", PERMISSIONS.MODERATE_BOARD), false);
   assert.equal(can("TUTOR", PERMISSIONS.MODERATE_BOARD), true);
   assert.equal(can("COORDINATOR", PERMISSIONS.MANAGE_USERS), true);
+});
+
+test("a persistent session requires an active membership in an active school", () => {
+  const now = new Date("2026-08-05T16:00:00.000Z");
+  const baseSession = {
+    expiresAt: new Date("2026-08-05T17:00:00.000Z"),
+    revokedAt: null,
+    sessionUserId: "user-1",
+    membershipUserId: "user-1",
+    membershipStatus: "ACTIVE",
+    schoolActive: true,
+  };
+
+  assert.equal(isSessionUsable(baseSession, now), true);
+  assert.equal(isSessionUsable({ ...baseSession, membershipStatus: "SUSPENDED" }, now), false);
+  assert.equal(isSessionUsable({ ...baseSession, schoolActive: false }, now), false);
+  assert.equal(isSessionUsable({ ...baseSession, membershipUserId: "user-2" }, now), false);
+});
+
+test("expired or revoked sessions are rejected", () => {
+  const now = new Date("2026-08-05T16:00:00.000Z");
+  const baseSession = {
+    expiresAt: new Date("2026-08-05T17:00:00.000Z"),
+    revokedAt: null,
+    sessionUserId: "user-1",
+    membershipUserId: "user-1",
+    membershipStatus: "ACTIVE",
+    schoolActive: true,
+  };
+
+  assert.equal(
+    isSessionUsable({ ...baseSession, expiresAt: new Date("2026-08-05T15:59:59.000Z") }, now),
+    false,
+  );
+  assert.equal(
+    isSessionUsable({ ...baseSession, revokedAt: new Date("2026-08-05T15:30:00.000Z") }, now),
+    false,
+  );
 });

@@ -79,6 +79,9 @@ Validat en local el 5 d'agost de 2026:
 - Actualització de pla i límits de persones i grups.
 - Suspensió i reactivació del centre amb bloqueig efectiu dels seus perfils.
 - Registre de les accions a l'auditoria global de plataforma.
+- Sessions de centre persistents i revocables, vinculades a l'usuari i a una
+  matrícula activa. Els canvis de rol s'apliquen a la petició següent i una
+  suspensió revoca totes les sessions d'aquella matrícula.
 
 Pendent d'implementació real:
 
