@@ -1,7 +1,7 @@
 import Link from "next/link";
 import PortalShell from "@/app/components/portal-shell";
 import {
-  aiHistoryForStudent,
+  GROUP_AI_USAGE,
   studentById,
   tasksForStudent,
   type TaskStatus,
@@ -28,7 +28,6 @@ export default async function ObserverPage({
   const requestedStudent = Array.isArray(params.student) ? params.student[0] : params.student;
   const student = studentById(requestedStudent);
   const tasks = tasksForStudent(student.id);
-  const aiHistory = aiHistoryForStudent(student.id);
 
   return (
     <PortalShell
@@ -66,7 +65,11 @@ export default async function ObserverPage({
             <strong>{student.overdueTasks}</strong>
             <span className={student.overdueTasks ? "warning-copy" : ""}>endarrerides</span>
           </div>
-          <p>{student.blocked ? "Hi ha un possible bloqueig detectat per la tutoria IA." : "Sense bloquejos detectats."}</p>
+          <p>
+            {student.overdueTasks
+              ? "Convé revisar la planificació de les tasques endarrerides."
+              : "No hi ha tasques endarrerides."}
+          </p>
         </article>
 
         <article className="portal-panel full">
@@ -97,22 +100,19 @@ export default async function ObserverPage({
         </article>
 
         <article className="portal-panel wide">
-          <p className="panel-label">TUTORIA IA · RESUM DE PRIVACITAT</p>
-          <h2>Tipus d'interacció</h2>
+          <p className="panel-label">TUTORIA IA · PRIVACITAT</p>
+          <h2>Sense historial individual</h2>
           <p>
-            Coordinació veu indicadors i matèries, però el contingut complet de les
-            converses queda reservat a la tutoria del grup.
+            Coordinació i tutoria no poden consultar què ha preguntat aquest alumne,
+            ni veure respostes o temps d'ús associats al seu nom. Només hi ha analítica
+            anònima del conjunt del grup.
           </p>
           <ul className="observer-ai-summary">
-            {aiHistory.length ? aiHistory.map((exchange) => (
-              <li key={exchange.id}>
-                <span><strong>{exchange.subject}</strong><small>{exchange.task}</small></span>
-                <span>{exchange.attemptsOnTask} peticions d'ajuda</span>
-                <em className={exchange.blocked ? "blocked" : ""}>
-                  {exchange.blocked ? "Possible bloqueig" : "Seguiment normal"}
-                </em>
-              </li>
-            )) : <li>Encara no hi ha interaccions registrades.</li>}
+            <li>
+              <span><strong>Grup {GROUP_AI_USAGE.group}</strong><small>{GROUP_AI_USAGE.period}</small></span>
+              <span>{GROUP_AI_USAGE.totalQuestions} preguntes en total</span>
+              <em>{GROUP_AI_USAGE.totalMinutes} minuts agregats</em>
+            </li>
           </ul>
         </article>
 
@@ -123,7 +123,7 @@ export default async function ObserverPage({
             <p><span>Etapa</span><strong>{student.stage}</strong></p>
             <p><span>Tutoria</span><strong>{student.tutor}</strong></p>
             <p><span>Mitjana</span><strong>{student.averageGrade.toFixed(1)}</strong></p>
-            <p><span>Interaccions IA</span><strong>{student.aiInteractions}</strong></p>
+            <p><span>Privacitat IA</span><strong>Sense dades individuals</strong></p>
           </div>
         </article>
       </section>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  AI_TUTOR_HISTORY,
+  GROUP_AI_USAGE,
   STUDENT_INSIGHTS,
   SUBJECT_INSIGHTS,
 } from "@/lib/demo-insights";
@@ -12,18 +12,9 @@ type DashboardTab = "students" | "subjects" | "ai";
 export default function TutoringDashboard() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("students");
   const groupStudents = useMemo(
-    () => STUDENT_INSIGHTS.filter((student) => student.group === "3r B"),
+    () => STUDENT_INSIGHTS.filter((student) => student.group === GROUP_AI_USAGE.group),
     [],
   );
-  const blockedExchanges = useMemo(() => {
-    const alerts = AI_TUTOR_HISTORY.filter((exchange) =>
-      exchange.blocked && groupStudents.some((student) => student.id === exchange.studentId)
-    );
-
-    return Array.from(
-      new Map(alerts.map((exchange) => [`${exchange.studentId}:${exchange.task}`, exchange])).values(),
-    );
-  }, [groupStudents]);
   const averageProgress = Math.round(
     groupStudents.reduce((total, student) => total + student.progressPercent, 0)
       / groupStudents.length,
@@ -37,30 +28,24 @@ export default function TutoringDashboard() {
     <>
       <article className="portal-panel full tutor-alert-panel">
         <div>
-          <p className="panel-label">ALERTES DE SEGUIMENT</p>
-          <h2>{blockedExchanges.length} possibles bloquejos detectats</h2>
+          <p className="panel-label">TUTORIA IA · SENYALS ANÒNIMS</p>
+          <h2>{GROUP_AI_USAGE.repeatedHelpSignals} possibles necessitats de suport al grup</h2>
+          <p>
+            Es detecten per repetició i temps d'ús, sense mostrar noms, preguntes,
+            respostes ni vincular l'activitat a cap alumne concret.
+          </p>
         </div>
-        <div className="tutor-alert-list">
-          {blockedExchanges.map((exchange) => (
-            <article key={exchange.id}>
-              <span aria-hidden="true">!</span>
-              <p>
-                <strong>{exchange.studentName}</strong>
-                {" "}ha sol·licitat ajuda {exchange.attemptsOnTask} vegades a{" "}
-                <b>{exchange.task}</b> i sembla bloquejat/ada.
-              </p>
-              <button onClick={() => setActiveTab("ai")} type="button">Revisar historial</button>
-            </article>
-          ))}
-        </div>
+        <button onClick={() => setActiveTab("ai")} type="button">
+          Veure consum agregat
+        </button>
       </article>
 
       <article className="portal-panel full tutor-dashboard">
         <header className="section-heading-row">
           <div>
-            <p className="panel-label">SEGUIMENT DEL GRUP 3r B</p>
-            <h2>Tasques, resultats i Tutoria IA</h2>
-            <p>Una visió conjunta per detectar necessitats sense obrir cada tauler.</p>
+            <p className="panel-label">SEGUIMENT DEL GRUP {GROUP_AI_USAGE.group}</p>
+            <h2>Tasques, resultats i ús agregat de la Tutoria IA</h2>
+            <p>Una visió conjunta del grup que manté privada cada conversa amb l'assistent.</p>
           </div>
           <div className="dashboard-tabs" role="tablist" aria-label="Vistes de seguiment">
             <button
@@ -88,7 +73,7 @@ export default function TutoringDashboard() {
               role="tab"
               type="button"
             >
-              Historial de Tutoria IA
+              Consum de Tutoria IA
             </button>
           </div>
         </header>
@@ -110,7 +95,6 @@ export default function TutoringDashboard() {
                     <th>Lliurades</th>
                     <th>Qualificades</th>
                     <th>Mitjana</th>
-                    <th>Seguiment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,11 +106,6 @@ export default function TutoringDashboard() {
                       <td>{student.deliveredTasks}</td>
                       <td>{student.gradedTasks}</td>
                       <td><strong>{student.averageGrade.toFixed(1)}</strong></td>
-                      <td>
-                        <span className={student.blocked ? "status-pill offline" : "status-pill"}>
-                          {student.blocked ? "Revisar bloqueig" : "Seguiment normal"}
-                        </span>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -158,37 +137,43 @@ export default function TutoringDashboard() {
         )}
 
         {activeTab === "ai" && (
-          <div className="ai-history" role="tabpanel">
+          <div className="ai-history ai-usage-dashboard" role="tabpanel">
             <div className="ai-privacy-note">
-              <strong>Accés tutorial justificat</strong>
+              <strong>Analítica anònima per defecte</strong>
               <span>
-                Aquest historial només és visible per tutoria i coordinació autoritzada.
-                Cal informar l'alumnat i definir la política de conservació del centre.
+                Tutoria només veu totals del grup. No es desen en aquesta vista noms,
+                textos de preguntes, respostes ni historials individuals.
               </span>
             </div>
-            {AI_TUTOR_HISTORY.map((exchange) => (
-              <article className={exchange.blocked ? "ai-exchange blocked" : "ai-exchange"} key={exchange.id}>
-                <header>
+
+            <div className="ai-usage-metrics">
+              <article><span>Preguntes</span><strong>{GROUP_AI_USAGE.totalQuestions}</strong><small>{GROUP_AI_USAGE.period}</small></article>
+              <article><span>Temps total</span><strong>{GROUP_AI_USAGE.totalMinutes} min</strong><small>Consum del grup</small></article>
+              <article><span>Sessions</span><strong>{GROUP_AI_USAGE.activeSessions}</strong><small>Sense identificadors personals</small></article>
+              <article><span>Franja principal</span><strong>{GROUP_AI_USAGE.busiestTime}</strong><small>Activitat agregada</small></article>
+            </div>
+
+            <section className="ai-subject-usage" aria-label="Consum de la IA per matèria">
+              <header>
+                <div>
+                  <p className="panel-label">MATÈRIES AMB MÉS CONSULTES</p>
+                  <h3>Distribució de l'ajuda sol·licitada</h3>
+                </div>
+                <span>Grup {GROUP_AI_USAGE.group}</span>
+              </header>
+              {GROUP_AI_USAGE.subjects.map((subject) => (
+                <article key={subject.subject}>
                   <div>
-                    <strong>{exchange.studentName}</strong>
-                    <span>{exchange.subject} · {exchange.task}</span>
+                    <strong>{subject.subject}</strong>
+                    <span>{subject.questions} preguntes · {subject.minutes} min · {subject.activeSessions} sessions</span>
                   </div>
-                  <time>{exchange.createdAt}</time>
-                </header>
-                <div className="ai-turn student-turn">
-                  <span>Alumne/a</span>
-                  <p>{exchange.prompt}</p>
-                </div>
-                <div className="ai-turn assistant-turn">
-                  <span>Tutor IA socràtic</span>
-                  <p>{exchange.response}</p>
-                </div>
-                <footer>
-                  <span>{exchange.attemptsOnTask} intents en aquesta tasca</span>
-                  {exchange.blocked && <strong>Possible bloqueig</strong>}
-                </footer>
-              </article>
-            ))}
+                  <div className="ai-subject-bar" aria-label={`${subject.sharePercent}% del consum`}>
+                    <span style={{ width: `${subject.sharePercent}%` }} />
+                  </div>
+                  <b>{subject.sharePercent}%</b>
+                </article>
+              ))}
+            </section>
           </div>
         )}
       </article>

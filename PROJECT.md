@@ -32,6 +32,14 @@ la participació de l'alumnat i la coordinació del centre.
 | Delegació | El seu grup | Proposar activitats i enquestes; adjuntar imatges o PDF; representar el grup. Les enquestes necessiten validació de tutoria. |
 | Alumnat | El seu grup | Llegir el tauler; votar; enviar consultes anònimes; consultar el seu espai i utilitzar l'assistent orientador. |
 
+L'accés inicial de l'administració del centre es configura amb variables segures
+de Railway. La contrasenya no forma part del repositori: només se'n desa un hash
+`scrypt`.
+
+La Tutoria IA aplica privacitat per defecte. Tutoria i coordinació només reben
+mètriques agregades del grup (preguntes, minuts, sessions i matèries); mai noms,
+prompts, respostes o historials individuals.
+
 ## Arquitectura
 
 - Interfície i API: Next.js 15, App Router i TypeScript.
@@ -64,8 +72,8 @@ Prototipat i validat només en local el 4 d'agost de 2026:
 
 - Supervisió global de coordinació amb filtres per etapa, grup, matèria,
   tutoria i alumne, més un mode observador que no permet modificar dades.
-- Seguiment tutorial per alumne i matèria, alertes de possible bloqueig i
-  historial de converses amb el Tutor IA reservat als perfils autoritzats.
+- Seguiment tutorial per alumne i matèria, amb consum agregat i anònim de la
+  Tutoria IA sense exposar converses o identitats.
 - Flux visual de tasques de l'alumnat amb els estats pendent, en curs,
   lliurada i qualificada.
 - Recursos plegables i quatre estils de taulell: pissarra blanca, guix, suro i

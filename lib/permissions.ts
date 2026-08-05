@@ -1,5 +1,6 @@
 export const PERMISSIONS = {
   VIEW_BOARD: "board:view",
+  ARRANGE_BOARD: "board:arrange",
   CREATE_NOTICE: "board:notice:create",
   CREATE_TASK: "board:task:create",
   CREATE_ACTIVITY: "board:activity:create",
@@ -79,16 +80,18 @@ export const ROLE_PERMISSIONS: Record<AppRole, readonly Permission[]> = {
   ],
   DELEGATE: [
     ...COMMON_PERMISSIONS,
+    PERMISSIONS.ARRANGE_BOARD,
     PERMISSIONS.CREATE_ACTIVITY,
     PERMISSIONS.CREATE_ATTACHMENT,
     PERMISSIONS.CREATE_POLL,
     PERMISSIONS.VIEW_GROUP_DASHBOARD,
   ],
-  STUDENT: [...COMMON_PERMISSIONS],
+  STUDENT: [...COMMON_PERMISSIONS, PERMISSIONS.ARRANGE_BOARD],
 };
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.VIEW_BOARD]: "Veure el tauler",
+  [PERMISSIONS.ARRANGE_BOARD]: "Organitzar els post-its",
   [PERMISSIONS.CREATE_NOTICE]: "Publicar avisos",
   [PERMISSIONS.CREATE_TASK]: "Publicar tasques",
   [PERMISSIONS.CREATE_ACTIVITY]: "Publicar activitats",
