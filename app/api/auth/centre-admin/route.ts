@@ -44,13 +44,29 @@ function recordFailure(key: string) {
   current.count += 1;
 }
 
+function requestOrigins(request: NextRequest) {
+  const origins = new Set([request.nextUrl.origin]);
+  const forwardedHost = request.headers.get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const forwardedProto = request.headers.get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+
+  if (forwardedHost && forwardedProto) {
+    origins.add(`${forwardedProto}://${forwardedHost}`);
+  }
+
+  return origins;
+}
+
 function redirectToAccess(request: NextRequest, error: "invalid" | "locked") {
   return NextResponse.redirect(new URL(`/acces?error=${error}`, request.url), 303);
 }
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) {
+  if (origin && !requestOrigins(request).has(origin)) {
     return NextResponse.json({ error: "Origen no autoritzat." }, { status: 403 });
   }
 
@@ -87,4 +103,3 @@ export async function POST(request: NextRequest) {
   response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
   return response;
 }
-
