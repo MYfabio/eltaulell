@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { GroupMemberRole } from "@prisma/client";
 import { z } from "zod";
 import { getActorId, getSchoolForAdmin } from "@/lib/admin";
 import { getDemoViewer } from "@/lib/demo-auth";
@@ -17,6 +16,8 @@ const GROUP_ROLE: Partial<Record<AppRole, GroupMemberRole>> = {
   DELEGATE: "DELEGATE",
   STUDENT: "STUDENT",
 };
+
+type GroupMemberRole = "TUTOR" | "DELEGATE" | "STUDENT";
 
 export async function PATCH(
   request: NextRequest,

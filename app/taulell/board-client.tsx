@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { BoardChoice } from "@/lib/board-store";
+import {
+  BOARD_THEMES,
+  tasksForStudent,
+  type BoardTheme,
+  type LearningTask,
+  type TaskStatus,
+} from "@/lib/demo-insights";
 import type { DemoViewer } from "@/lib/demo-auth";
 import {
   can,
@@ -9,6 +18,7 @@ import {
   type Permission,
   type PostKind,
 } from "@/lib/permissions";
+import BoardExtras from "./board-extras";
 import "./taulell.css";
 
 type NoteType = "Avisos" | "Tasques" | "Activitats" | "Materials";
@@ -24,6 +34,34 @@ type Note = {
   icon: string;
   link?: string;
 };
+
+type CardPosition = {
+  x: number;
+  y: number;
+};
+
+type CardDragState = {
+  cardKey: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  nextX: number;
+  nextY: number;
+  rect: DOMRect;
+};
+
+type MovableCardStyle = CSSProperties & {
+  "--card-x": string;
+  "--card-y": string;
+};
+
+function isCardPosition(value: unknown): value is CardPosition {
+  if (!value || typeof value !== "object") return false;
+  const position = value as Partial<CardPosition>;
+  return Number.isFinite(position.x) && Number.isFinite(position.y);
+}
 
 const initialNotes: Note[] = [
   {
@@ -102,19 +140,165 @@ const noteKindByType: Record<NoteType, PostKind> = {
   Materials: "MATERIAL",
 };
 
-export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
+const taskStatusLabels: Record<TaskStatus, string> = {
+  PENDING: "Pendent",
+  IN_PROGRESS: "En curs",
+  DELIVERED: "Lliurada",
+  GRADED: "Qualificada",
+};
+
+export default function BoardClient({
+  boards,
+  selectedBoard,
+  viewer,
+}: {
+  boards: BoardChoice[];
+  selectedBoard: BoardChoice;
+  viewer: DemoViewer;
+}) {
+  const taskOwnerId = viewer.id === "student-marc" ? "marc-costa" : viewer.id;
+  const taskStorageKey = `eltaulell-learning-tasks-${taskOwnerId}`;
+  const cardPositionStorageKey =
+    `eltaulell-card-positions-${viewer.id}-${selectedBoard.groupId}`;
+  const canArrangeBoard = viewer.role === "STUDENT";
+  const boardRef = useRef<HTMLDivElement>(null);
+  const cardDragRef = useRef<CardDragState | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const [notes, setNotes] = useState(initialNotes);
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tot");
   const [chatOpen, setChatOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
-  const [pollChoice, setPollChoice] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
   const [draftType, setDraftType] = useState<NoteType>("Avisos");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState("");
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>("cork");
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [learningTasks, setLearningTasks] = useState<LearningTask[]>(() =>
+    tasksForStudent(taskOwnerId),
+  );
+  const [classroomNotice, setClassroomNotice] = useState("");
+  const [tasksHydrated, setTasksHydrated] = useState(false);
+  const [feedbackTaskId, setFeedbackTaskId] = useState<string | null>(null);
+  const [cardPositions, setCardPositions] = useState<Record<string, CardPosition>>({});
+  const [loadedCardPositionKey, setLoadedCardPositionKey] = useState<string | null>(null);
+  const [draggingCardKey, setDraggingCardKey] = useState<string | null>(null);
+
+  function playCardSound(kind: "lift" | "drop") {
+    try {
+      const context = audioContextRef.current ?? new AudioContext();
+      audioContextRef.current = context;
+      if (context.state === "suspended") void context.resume();
+
+      const now = context.currentTime;
+      const duration = kind === "lift" ? 0.055 : 0.075;
+      const noiseBuffer = context.createBuffer(
+        1,
+        Math.ceil(context.sampleRate * duration),
+        context.sampleRate,
+      );
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let index = 0; index < noiseData.length; index += 1) {
+        noiseData[index] = Math.random() * 2 - 1;
+      }
+
+      const noise = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const noiseGain = context.createGain();
+      noise.buffer = noiseBuffer;
+      filter.type = kind === "lift" ? "highpass" : "lowpass";
+      filter.frequency.setValueAtTime(kind === "lift" ? 1450 : 850, now);
+      noiseGain.gain.setValueAtTime(kind === "lift" ? 0.012 : 0.016, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      noise.connect(filter).connect(noiseGain).connect(context.destination);
+
+      const tone = context.createOscillator();
+      const toneGain = context.createGain();
+      tone.type = kind === "lift" ? "sine" : "triangle";
+      tone.frequency.setValueAtTime(kind === "lift" ? 390 : 230, now);
+      tone.frequency.exponentialRampToValueAtTime(kind === "lift" ? 540 : 135, now + duration);
+      toneGain.gain.setValueAtTime(0.0001, now);
+      toneGain.gain.exponentialRampToValueAtTime(kind === "lift" ? 0.014 : 0.019, now + 0.006);
+      toneGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      tone.connect(toneGain).connect(context.destination);
+
+      noise.start(now);
+      tone.start(now);
+      tone.stop(now + duration);
+    } catch {
+      // El moviment del tauler ha de continuar funcionant encara que l'àudio no estigui disponible.
+    }
+  }
+
+  useEffect(() => () => {
+    if (audioContextRef.current) {
+      void audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("eltaulell-board-theme");
+    if (BOARD_THEMES.some((theme) => theme.id === savedTheme)) {
+      setBoardTheme(savedTheme as BoardTheme);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("eltaulell-board-theme", boardTheme);
+  }, [boardTheme]);
+
+  useEffect(() => {
+    try {
+      const savedTasks = window.sessionStorage.getItem(taskStorageKey);
+      if (savedTasks) {
+        const parsedTasks = JSON.parse(savedTasks) as LearningTask[];
+        if (Array.isArray(parsedTasks)) setLearningTasks(parsedTasks);
+      }
+    } catch {
+      window.sessionStorage.removeItem(taskStorageKey);
+    } finally {
+      setTasksHydrated(true);
+    }
+  }, [taskStorageKey]);
+
+  useEffect(() => {
+    if (!tasksHydrated) return;
+    window.sessionStorage.setItem(taskStorageKey, JSON.stringify(learningTasks));
+  }, [learningTasks, taskStorageKey, tasksHydrated]);
+
+  useEffect(() => {
+    if (!canArrangeBoard) {
+      setCardPositions({});
+      setLoadedCardPositionKey(null);
+      return;
+    }
+
+    try {
+      const savedPositions = window.localStorage.getItem(cardPositionStorageKey);
+      const parsedPositions = savedPositions
+        ? (JSON.parse(savedPositions) as Record<string, unknown>)
+        : {};
+      setCardPositions(
+        Object.fromEntries(
+          Object.entries(parsedPositions).filter((entry) => isCardPosition(entry[1])),
+        ) as Record<string, CardPosition>,
+      );
+    } catch {
+      window.localStorage.removeItem(cardPositionStorageKey);
+      setCardPositions({});
+    } finally {
+      setLoadedCardPositionKey(cardPositionStorageKey);
+    }
+  }, [canArrangeBoard, cardPositionStorageKey]);
+
+  useEffect(() => {
+    if (!canArrangeBoard || loadedCardPositionKey !== cardPositionStorageKey) return;
+    window.localStorage.setItem(cardPositionStorageKey, JSON.stringify(cardPositions));
+  }, [canArrangeBoard, cardPositionStorageKey, cardPositions, loadedCardPositionKey]);
 
   const availableNoteTypes = useMemo(
     () =>
@@ -297,8 +481,137 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
     setNotes((current) => current.filter((item) => item.id !== id));
   }
 
+  function cardPositionStyle(cardKey: string): MovableCardStyle | undefined {
+    if (!canArrangeBoard) return undefined;
+    const position = cardPositions[cardKey] ?? { x: 0, y: 0 };
+    return {
+      "--card-x": `${position.x}px`,
+      "--card-y": `${position.y}px`,
+    };
+  }
+
+  function startCardDrag(event: ReactPointerEvent<HTMLElement>, cardKey: string) {
+    if (!canArrangeBoard || event.button !== 0) return;
+    const interactiveTarget = (event.target as HTMLElement).closest(
+      "button, a, input, textarea, select, label",
+    );
+    if (interactiveTarget) return;
+
+    const position = cardPositions[cardKey] ?? { x: 0, y: 0 };
+    cardDragRef.current = {
+      cardKey,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: position.x,
+      originY: position.y,
+      nextX: position.x,
+      nextY: position.y,
+      rect: event.currentTarget.getBoundingClientRect(),
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    playCardSound("lift");
+    setDraggingCardKey(cardKey);
+  }
+
+  function moveCard(event: ReactPointerEvent<HTMLElement>) {
+    const dragState = cardDragRef.current;
+    const board = boardRef.current;
+    if (
+      !canArrangeBoard ||
+      !dragState ||
+      !board ||
+      dragState.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const boardRect = board.getBoundingClientRect();
+    const horizontalMove = event.clientX - dragState.startX;
+    const verticalMove = event.clientY - dragState.startY;
+    const edgeSpace = 12;
+    const left = Math.min(
+      Math.max(dragState.rect.left + horizontalMove, boardRect.left + edgeSpace),
+      boardRect.right - dragState.rect.width - edgeSpace,
+    );
+    const top = Math.min(
+      Math.max(dragState.rect.top + verticalMove, boardRect.top + edgeSpace),
+      boardRect.bottom - dragState.rect.height - edgeSpace,
+    );
+    dragState.nextX = Math.round(dragState.originX + left - dragState.rect.left);
+    dragState.nextY = Math.round(dragState.originY + top - dragState.rect.top);
+    event.currentTarget.style.setProperty("--card-x", `${dragState.nextX}px`);
+    event.currentTarget.style.setProperty("--card-y", `${dragState.nextY}px`);
+  }
+
+  function finishCardDrag(event: ReactPointerEvent<HTMLElement>) {
+    const dragState = cardDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setCardPositions((current) => ({
+      ...current,
+      [dragState.cardKey]: { x: dragState.nextX, y: dragState.nextY },
+    }));
+    playCardSound("drop");
+    cardDragRef.current = null;
+    setDraggingCardKey(null);
+  }
+
+  function resetCardPositions() {
+    window.localStorage.removeItem(cardPositionStorageKey);
+    setCardPositions({});
+  }
+
+  function updateTaskStatus(taskId: string, status: TaskStatus) {
+    const task = learningTasks.find((item) => item.id === taskId);
+    if (!task || viewer.role !== "STUDENT") return;
+
+    setLearningTasks((current) =>
+      current.map((item) => (item.id === taskId ? { ...item, status } : item)),
+    );
+
+  }
+
+  function startTask(task: LearningTask) {
+    if (task.status === "PENDING") updateTaskStatus(task.id, "IN_PROGRESS");
+    setQuery(`Ajuda'm a començar: ${task.title}`);
+    setAnswer(
+      `Comencem per entendre què et demana la tasca de ${task.subject}. Quina part tens clara i quin seria el primer pas més petit que podries fer?`,
+    );
+    setChatOpen(true);
+    setClassroomNotice(
+      task.classroomLinked
+        ? "S'ha obert el Tutor IA per començar. El document de Classroom s'obrirà aquí quan el centre autoritzi Google Workspace."
+        : "S'ha obert el Tutor IA amb el context d'aquesta tasca.",
+    );
+  }
+
+  function deliverTask(task: LearningTask) {
+    updateTaskStatus(task.id, "DELIVERED");
+    setFeedbackTaskId(null);
+    setClassroomNotice(
+      task.classroomLinked
+        ? "Tasca marcada com a lliurada en aquesta demo local. Encara no s'ha enviat a Classroom perquè falta l'autorització OAuth."
+        : "Tasca marcada com a lliurada en aquesta demo local.",
+    );
+  }
+
+  function reclaimTask(task: LearningTask) {
+    updateTaskStatus(task.id, "IN_PROGRESS");
+    setClassroomNotice(
+      task.classroomLinked
+        ? "Lliurament anul·lat en aquesta demo local. La recuperació real a Classroom s'activarà amb OAuth."
+        : "La tasca torna a estar en procés.",
+    );
+  }
+
   return (
-    <main className="dashboard">
+    <main className={`dashboard theme-${boardTheme}`}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">T</div>
@@ -363,8 +676,24 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
         </div>
       </section>
 
-      <div className="workspace">
+      <div className={resourcesOpen ? "workspace resources-open" : "workspace resources-collapsed"}>
         <section className="board-wrap">
+          {boards.length > 1 && (
+            <nav aria-label="Seleccionar el tauler del grup" className="board-switcher">
+              <span>TAULERS DEL CENTRE</span>
+              <div>
+                {boards.map((board) => (
+                  <Link
+                    className={board.groupId === selectedBoard.groupId ? "active" : ""}
+                    href={`/taulell?groupId=${encodeURIComponent(board.groupId)}`}
+                    key={board.boardId}
+                  >
+                    {board.groupName}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          )}
           <div className="board-tools">
             <div className="filters" aria-label="Filtrar publicacions">
               {filters.map((filter) => (
@@ -379,6 +708,35 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
               ))}
             </div>
             <div className="board-actions">
+              <label className="theme-control">
+                <span>Estil</span>
+                <select
+                  aria-label="Estil visual del taulell"
+                  onChange={(event) => setBoardTheme(event.target.value as BoardTheme)}
+                  value={boardTheme}
+                >
+                  {BOARD_THEMES.map((theme) => (
+                    <option key={theme.id} value={theme.id}>{theme.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                aria-expanded={resourcesOpen}
+                className="resource-toggle"
+                onClick={() => setResourcesOpen((current) => !current)}
+                type="button"
+              >
+                {resourcesOpen ? "Tancar recursos" : "Obrir recursos"}
+              </button>
+              {canArrangeBoard && Object.keys(cardPositions).length > 0 && (
+                <button
+                  className="layout-reset"
+                  onClick={resetCardPositions}
+                  type="button"
+                >
+                  Restablir ordre
+                </button>
+              )}
               <button className="search-button" aria-label="Cercar" type="button">
                 ⌕
               </button>
@@ -418,15 +776,121 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
             <p className="action-message" role="status">{actionMessage}</p>
           )}
 
-          <div className="corkboard">
+          <div
+            className={`corkboard${canArrangeBoard ? " student-arrangeable" : ""}`}
+            ref={boardRef}
+          >
             <div className="board-label">
-              <span>📌</span> TAULER DE {viewer.groupName.toUpperCase()}
+              <span>📌</span> TAULER DE {selectedBoard.groupName.toUpperCase()}
             </div>
+
+          {viewer.role === "STUDENT" && (
+            <section className="task-workflow board-task-workflow" aria-label="Seguiment visual de tasques">
+              <div className="task-columns">
+                {(Object.keys(taskStatusLabels) as TaskStatus[]).map((status) => (
+                  <section key={status}>
+                    <h2>{taskStatusLabels[status]}</h2>
+                    {learningTasks.filter((task) => task.status === status).map((task) => (
+                      <article
+                        className={`learning-task status-${status.toLowerCase().replace("_", "-")}${task.overdue ? " overdue" : ""}${canArrangeBoard ? " board-card-movable" : ""}${draggingCardKey === `task:${task.id}` ? " is-dragging" : ""}`}
+                        data-board-card-key={`task:${task.id}`}
+                        key={task.id}
+                        onPointerCancel={finishCardDrag}
+                        onPointerDown={(event) => startCardDrag(event, `task:${task.id}`)}
+                        onPointerMove={moveCard}
+                        onPointerUp={finishCardDrag}
+                        style={cardPositionStyle(`task:${task.id}`)}
+                      >
+                        <header className="task-card-heading">
+                          <span aria-hidden="true" className="task-subject-icon">{task.subjectIcon}</span>
+                          <div>
+                            <span>{task.subject}</span>
+                            <strong>{task.title}</strong>
+                          </div>
+                        </header>
+
+                        <div className="task-due-date">
+                          <span>Data límit</span>
+                          <strong>{task.dueLabel}</strong>
+                        </div>
+
+                        <div className="task-card-badges">
+                          {task.classroomLinked && <em>Classroom · OAuth pendent</em>}
+                          {status === "IN_PROGRESS" && <b>En procés</b>}
+                          {status === "DELIVERED" && <b>Esperant qualificació</b>}
+                        </div>
+
+                        {status === "GRADED" && typeof task.grade === "number" && (
+                          <div className="task-grade-badge">
+                            <span>Qualificació</span>
+                            <strong>
+                              {task.grade.toFixed(1)} / {task.maximumGrade ?? 10}
+                            </strong>
+                          </div>
+                        )}
+
+                        {feedbackTaskId === task.id && task.teacherFeedback && (
+                          <div className="teacher-feedback" role="status">
+                            <span>Comentari del professorat</span>
+                            <p>{task.teacherFeedback}</p>
+                          </div>
+                        )}
+
+                        <footer className="task-card-actions">
+                          {status === "PENDING" && (
+                            <button className="task-primary-action" onClick={() => startTask(task)} type="button">
+                              Començar
+                            </button>
+                          )}
+                          {status === "IN_PROGRESS" && (
+                            <>
+                              <button className="task-secondary-action" onClick={() => startTask(task)} type="button">
+                                Continuar amb Tutor IA
+                              </button>
+                              <button className="task-primary-action" onClick={() => deliverTask(task)} type="button">
+                                Lliurar
+                              </button>
+                            </>
+                          )}
+                          {status === "DELIVERED" && (
+                            <button className="task-secondary-action" onClick={() => reclaimTask(task)} type="button">
+                              Anul·lar lliurament
+                            </button>
+                          )}
+                          {status === "GRADED" && task.teacherFeedback && (
+                            <button
+                              aria-expanded={feedbackTaskId === task.id}
+                              className="task-feedback-action"
+                              onClick={() => setFeedbackTaskId((current) => current === task.id ? null : task.id)}
+                              type="button"
+                            >
+                              {feedbackTaskId === task.id ? "Amagar comentari" : "Llegir comentari"}
+                            </button>
+                          )}
+                        </footer>
+                      </article>
+                    ))}
+                    {!learningTasks.some((task) => task.status === status) && <p>Cap tasca.</p>}
+                  </section>
+                ))}
+              </div>
+            </section>
+          )}
+
+            {activeFilter === "Tot" && (
+              <BoardExtras groupId={selectedBoard.groupId} viewer={viewer} />
+            )}
             <div className="notes-grid" aria-live="polite">
               {visibleNotes.map((note, index) => (
                 <article
-                  className={`note ${note.color} tilt-${(index % 3) + 1}`}
+                  className={`note ${note.color} tilt-${(index % 3) + 1}${canArrangeBoard ? " board-card-movable" : ""}${draggingCardKey === `note:${note.id}` ? " is-dragging" : ""}`}
+                  data-board-card-key={`note:${note.id}`}
                   key={note.id}
+                  onPointerCancel={finishCardDrag}
+                  onPointerDown={(event) => startCardDrag(event, `note:${note.id}`)}
+                  onPointerMove={moveCard}
+                  onPointerUp={finishCardDrag}
+                  style={cardPositionStyle(`note:${note.id}`)}
                 >
                   <span className="pin" />
                   {can(viewer, PERMISSIONS.MODERATE_BOARD) && (
@@ -460,38 +924,11 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
                   <footer>{note.meta}</footer>
                 </article>
               ))}
-
-              {activeFilter === "Tot" && (
-                <article className="poll-card">
-                  <span className="tape" />
-                  <span className="poll-label">CONSULTA ANÒNIMA</span>
-                  <h2>Quina activitat preferiu per a la tutoria?</h2>
-                  {[
-                    "Dinàmica de grup",
-                    "Debat sobre xarxes",
-                    "Sortida al pati",
-                  ].map((option, index) => (
-                    <button
-                      className={pollChoice === index ? "poll-selected" : ""}
-                      disabled={!can(viewer, PERMISSIONS.VOTE_POLL)}
-                      onClick={() =>
-                        can(viewer, PERMISSIONS.VOTE_POLL) && setPollChoice(index)
-                      }
-                      key={option}
-                      type="button"
-                    >
-                      <span>{pollChoice === index ? "●" : "○"}</span>
-                      {option}
-                    </button>
-                  ))}
-                  <small>El teu vot és completament anònim</small>
-                </article>
-              )}
             </div>
           </div>
         </section>
 
-        <aside>
+        {resourcesOpen && <aside aria-label="Recursos i agenda desplegables">
           <section className="agenda card">
             <div className="card-title">
               <div>
@@ -556,7 +993,7 @@ export default function BoardClient({ viewer }: { viewer: DemoViewer }) {
               <p>Pot publicar activitats i crear consultes anònimes.</p>
             </div>
           </section>
-        </aside>
+        </aside>}
       </div>
 
       <button

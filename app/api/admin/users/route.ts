@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma, type GroupMemberRole } from "@prisma/client";
 import { z } from "zod";
 import { getActorId, getSchoolForAdmin } from "@/lib/admin";
 import { getDemoViewer } from "@/lib/demo-auth";
@@ -19,6 +18,8 @@ const GROUP_ROLE: Partial<Record<AppRole, GroupMemberRole>> = {
   DELEGATE: "DELEGATE",
   STUDENT: "STUDENT",
 };
+
+type GroupMemberRole = "TUTOR" | "DELEGATE" | "STUDENT";
 
 export async function POST(request: NextRequest) {
   const viewer = await getDemoViewer();
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === "ALREADY_MEMBER") {
       return NextResponse.json({ error: "Aquesta persona ja forma part del centre." }, { status: 409 });
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
       return NextResponse.json({ error: "Ja existeix una persona amb aquestes dades." }, { status: 409 });
     }
     console.error("Unable to create school member", error);
