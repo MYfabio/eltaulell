@@ -7,6 +7,8 @@ Estat: completada a nivell inicial.
 - Next.js, TypeScript, PostgreSQL i Prisma.
 - Centres, grups, membres, rols, taulers i auditoria.
 - Desplegament a Railway i domini propi.
+- Administració general de plataforma validada en local: alta de centres,
+  coordinació inicial, plans, límits, suspensió i auditoria global.
 
 ## Fase 1 — Tauler operatiu i permisos
 
@@ -42,6 +44,8 @@ Estat: pendent.
 - Alta controlada per domini, invitació i estat de membre.
 - Sessions persistents, revocació i recuperació d'accés.
 - Registre d'auditoria per a les accions sensibles.
+- Accés real de l'administració general amb autenticació reforçada i sense
+  comptes de demostració en producció.
 
 ## Fase 3 — Tutoria i convivència
 
@@ -101,7 +105,8 @@ Estat: pendent.
 
 ## Prioritat immediata
 
-1. Acabar la validació local de la fase 1 amb els quatre perfils.
-2. Corregir els errors detectats sense publicar encara.
-3. Revisar els canvis amb la persona responsable del projecte.
+1. Revisar en local el nou panell d'administració general.
+2. Acabar la validació local de la fase 1 amb els quatre perfils.
+3. Preparar l'accés real amb Google Workspace i la protecció reforçada del
+   compte d'administració general.
 4. Preparar una pull request i desplegar només després de l'aprovació.

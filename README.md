@@ -16,6 +16,11 @@ enllaç i un codi separat, limitar-ne els usos i revocar-les. La importació de
 l'alumnat des de Classroom es mostra com a flux preparat, però no llegeix dades
 reals fins que el centre completi l'autorització OAuth de Google.
 
+La vista local inclou una administració general separada dels rols de centre.
+Permet donar d'alta centres amb la seva coordinació inicial, definir plans i
+límits, suspendre o reactivar l'accés i consultar una auditoria global. Aquest
+accés de demostració no s'exposa en producció sense activar-lo explícitament.
+
 Consulta [PROJECT.md](./PROJECT.md) per entendre l'abast i les decisions del
 projecte, i [ROADMAP.md](./ROADMAP.md) per veure què està fet i què falta.
 
@@ -28,6 +33,9 @@ npm.cmd run local
 ```
 
 Després, obre <http://127.0.0.1:3000/acces>.
+
+Des de la pantalla d'accés pots entrar a **Administració general** i revisar el
+panell de centres a <http://127.0.0.1:3000/administracio-plataforma>.
 
 Aquesta vista crea dades de demostració en memòria. No necessita PostgreSQL, no
 modifica Railway i totes les dades locals desapareixen quan es reinicia el

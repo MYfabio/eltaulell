@@ -9,6 +9,8 @@ type DbMethod = (args: any) => Promise<any>;
 export interface DatabaseClient {
   $transaction<T>(operation: (transaction: DatabaseClient) => Promise<T>): Promise<T>;
   auditLog: { create: DbMethod };
+  platformAdmin: { upsert: DbMethod };
+  platformAuditLog: { create: DbMethod; findMany: DbMethod };
   board: { findMany: DbMethod; upsert: DbMethod };
   boardAttachment: {
     count: DbMethod;
@@ -41,7 +43,14 @@ export interface DatabaseClient {
     update: DbMethod;
     updateMany: DbMethod;
   };
-  school: { findUniqueOrThrow: DbMethod; upsert: DbMethod };
+  school: {
+    create: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    findUniqueOrThrow: DbMethod;
+    update: DbMethod;
+    upsert: DbMethod;
+  };
   schoolMembership: {
     count: DbMethod;
     create: DbMethod;
@@ -63,6 +72,8 @@ type LocalState = {
   memberships: Row[];
   pollOptions: Row[];
   polls: Row[];
+  platformAdmins: Row[];
+  platformAuditLogs: Row[];
   schools: Row[];
   users: Row[];
   votes: Row[];
@@ -79,6 +90,8 @@ function makeState(): LocalState {
     memberships: [],
     pollOptions: [],
     polls: [],
+    platformAdmins: [],
+    platformAuditLogs: [],
     schools: [],
     users: [],
     votes: [],
@@ -171,7 +184,17 @@ export function createLocalDb(): DatabaseClient {
       async upsert({ where, create }: Row) {
         const existing = state.schools.find((school) => school.slug === where.slug);
         if (existing) return existing;
-        const school = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...create };
+        const school = {
+          id: randomUUID(),
+          emailDomain: null,
+          active: true,
+          plan: "PILOT",
+          maxUsers: 500,
+          maxGroups: 30,
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
         state.schools.push(school);
         return school;
       },
@@ -212,6 +235,106 @@ export function createLocalDb(): DatabaseClient {
             .slice(0, 10)
             .map((entry) => ({ ...entry, actor: userById(entry.actorId) })),
         };
+      },
+      async findFirst({ where, select }: Row) {
+        const school = state.schools.find((candidate) => {
+          if (where.id && candidate.id !== where.id) return false;
+          if (where.slug && candidate.slug !== where.slug) return false;
+          return true;
+        });
+        return project(school, select);
+      },
+      async findMany() {
+        return state.schools
+          .map((school): Row => ({
+            ...school,
+            memberships: state.memberships
+              .filter(
+                (membership) =>
+                  membership.schoolId === school.id &&
+                  membership.role === "COORDINATOR" &&
+                  membership.status === "ACTIVE",
+              )
+              .map((membership) => ({
+                ...membership,
+                user: userById(membership.userId),
+              })),
+            _count: {
+              memberships: state.memberships.filter(
+                (membership) => membership.schoolId === school.id,
+              ).length,
+              groups: state.groups.filter((group) => group.schoolId === school.id).length,
+            },
+          }))
+          .sort((a: Row, b: Row) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
+      async create({ data }: Row) {
+        if (state.schools.some((school) => school.slug === data.slug)) {
+          throw uniqueError("School slug already exists");
+        }
+        const school = {
+          id: randomUUID(),
+          active: true,
+          plan: "PILOT",
+          maxUsers: 500,
+          maxGroups: 30,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.schools.push(school);
+        return school;
+      },
+      async update({ where, data }: Row) {
+        const school = schoolById(where.id);
+        if (!school) throw new Error("School not found");
+        if (
+          data.slug &&
+          state.schools.some((candidate) => candidate.id !== school.id && candidate.slug === data.slug)
+        ) {
+          throw uniqueError("School slug already exists");
+        }
+        Object.assign(school, data, { updatedAt: now() });
+        return school;
+      },
+    },
+
+    platformAdmin: {
+      async upsert({ where, create }: Row) {
+        const existing = state.platformAdmins.find((admin) => admin.userId === where.userId);
+        if (existing) return existing;
+        const admin = {
+          id: randomUUID(),
+          active: true,
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.platformAdmins.push(admin);
+        return admin;
+      },
+    },
+
+    platformAuditLog: {
+      async create({ data }: Row) {
+        const entry = { id: randomUUID(), createdAt: now(), ...data };
+        state.platformAuditLogs.push(entry);
+        return entry;
+      },
+      async findMany() {
+        return state.platformAuditLogs
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, 20)
+          .map((entry) => {
+            const admin = state.platformAdmins.find(
+              (candidate) => candidate.id === entry.platformAdminId,
+            );
+            return {
+              ...entry,
+              platformAdmin: admin ? { user: userById(admin.userId) } : null,
+              school: schoolById(entry.schoolId),
+            };
+          });
       },
     },
 

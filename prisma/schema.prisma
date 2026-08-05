@@ -20,6 +20,11 @@ enum MembershipStatus {
   SUSPENDED
 }
 
+enum SchoolPlan {
+  PILOT
+  STANDARD
+}
+
 enum GroupMemberRole {
   TUTOR
   DELEGATE
@@ -69,6 +74,9 @@ model School {
   emailDomain      String?
   moodleBaseUrl    String?
   active           Boolean                 @default(true)
+  plan             SchoolPlan              @default(PILOT)
+  maxUsers         Int                     @default(500)
+  maxGroups        Int                     @default(30)
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   memberships      SchoolMembership[]
@@ -78,6 +86,7 @@ model School {
   groupInvites     GroupInvite[]
   calendarEvents   CalendarEvent[]
   auditLogs        AuditLog[]
+  platformAuditLogs PlatformAuditLog[]
 }
 
 model User {
@@ -98,6 +107,34 @@ model User {
   acceptedInvites  Invitation[]      @relation("AcceptedInvitation")
   groupInvitesCreated GroupInvite[]  @relation("GroupInviteCreatedBy")
   auditLogs        AuditLog[]
+  platformAdmin    PlatformAdmin?
+}
+
+model PlatformAdmin {
+  id        String             @id @default(cuid())
+  userId    String             @unique
+  active    Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs PlatformAuditLog[]
+}
+
+model PlatformAuditLog {
+  id              String         @id @default(cuid())
+  platformAdminId String?
+  schoolId        String?
+  action          String
+  entityType      String
+  entityId        String?
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  platformAdmin   PlatformAdmin? @relation(fields: [platformAdminId], references: [id], onDelete: SetNull)
+  school          School?        @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([platformAdminId])
+  @@index([schoolId, createdAt])
 }
 
 model SchoolMembership {
