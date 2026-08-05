@@ -7,6 +7,7 @@ import {
   type Permission,
   permissionsForRole,
 } from "@/lib/permissions";
+import { db } from "@/lib/db";
 
 export type DemoRole = AppRole;
 
@@ -24,7 +25,26 @@ export type DemoViewer = {
   permissions: Permission[];
 };
 
+export type PlatformDemoViewer = {
+  id: string;
+  name: string;
+  firstName: string;
+  initials: string;
+  email: string;
+  roleLabel: string;
+};
+
 export const DEMO_COOKIE = "eltaulell_demo_session";
+export const PLATFORM_DEMO_COOKIE = "eltaulell_platform_demo_session";
+
+export const PLATFORM_DEMO_ADMIN: PlatformDemoViewer = {
+  id: "platform-admin-demo",
+  name: "Administració El Taulell",
+  firstName: "Administració",
+  initials: "AT",
+  email: "admin@demo.eltaulell.cat",
+  roleLabel: "Administració de plataforma",
+};
 
 export const DEMO_VIEWERS: DemoViewer[] = [
   {
@@ -99,7 +119,7 @@ export function createDemoSession(userId: string) {
   return `${payload}.${sign(payload)}`;
 }
 
-export function verifyDemoSession(token?: string) {
+function verifySessionSubject(token?: string) {
   if (!token) return null;
   const [payload, suppliedSignature] = token.split(".");
   if (!payload || !suppliedSignature) return null;
@@ -119,12 +139,50 @@ export function verifyDemoSession(token?: string) {
   const expiresAt = Number(decoded.slice(separator + 1));
   if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return null;
 
+  return userId;
+}
+
+export function verifyDemoSession(token?: string) {
+  const userId = verifySessionSubject(token);
   return DEMO_VIEWERS.find((viewer) => viewer.id === userId) || null;
+}
+
+export function isPlatformDemoEnabled() {
+  return process.env.ELTAULELL_LOCAL_PREVIEW === "1" ||
+    process.env.PLATFORM_ADMIN_DEMO_ENABLED === "1";
+}
+
+export function createPlatformDemoSession() {
+  return createDemoSession(PLATFORM_DEMO_ADMIN.id);
+}
+
+export function verifyPlatformDemoSession(token?: string) {
+  if (!isPlatformDemoEnabled()) return null;
+  return verifySessionSubject(token) === PLATFORM_DEMO_ADMIN.id
+    ? PLATFORM_DEMO_ADMIN
+    : null;
 }
 
 export async function getDemoViewer() {
   const cookieStore = await cookies();
-  return verifyDemoSession(cookieStore.get(DEMO_COOKIE)?.value);
+  const viewer = verifyDemoSession(cookieStore.get(DEMO_COOKIE)?.value);
+  if (!viewer) return null;
+  const school = await db.school.findFirst({
+    where: { slug: viewer.schoolSlug },
+    select: { active: true },
+  });
+  return school && school.active === false ? null : viewer;
+}
+
+export async function getPlatformDemoViewer() {
+  const cookieStore = await cookies();
+  return verifyPlatformDemoSession(cookieStore.get(PLATFORM_DEMO_COOKIE)?.value);
+}
+
+export async function requirePlatformDemoViewer() {
+  const viewer = await getPlatformDemoViewer();
+  if (!viewer) redirect("/acces");
+  return viewer;
 }
 
 export async function requireDemoViewer(roles?: DemoRole[]) {

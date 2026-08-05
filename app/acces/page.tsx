@@ -1,18 +1,26 @@
 import Link from "next/link";
-import { DEMO_VIEWERS, getDemoViewer } from "@/lib/demo-auth";
+import {
+  DEMO_VIEWERS,
+  getDemoViewer,
+  getPlatformDemoViewer,
+  isPlatformDemoEnabled,
+  PLATFORM_DEMO_ADMIN,
+} from "@/lib/demo-auth";
 import { PERMISSION_LABELS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 const roleDescriptions = {
-  COORDINATOR: "Gestiona centres, persones, grups, permisos i integracions.",
-  TUTOR: "Modera el tauler, acompanya el grup i publica avisos i tasques.",
+  COORDINATOR: "Gestiona persones, grups, permisos i integracions del seu centre.",
+  TUTOR: "Modera el taulell, acompanya el grup i publica avisos i tasques.",
   DELEGATE: "Representa el grup, proposa activitats i crea consultes.",
-  STUDENT: "Consulta el tauler, les tasques i participa de manera segura.",
+  STUDENT: "Consulta el taulell, les tasques i participa de manera segura.",
 };
 
 export default async function AccessPage() {
   const currentViewer = await getDemoViewer();
+  const currentPlatformViewer = await getPlatformDemoViewer();
+  const platformAdminEnabled = isPlatformDemoEnabled();
 
   return (
     <main className="access-page">
@@ -28,8 +36,8 @@ export default async function AccessPage() {
         <p>VERSIÓ FUNCIONAL · MODE DEMOSTRACIÓ</p>
         <h1>Entra amb un perfil i comprova els permisos.</h1>
         <span>
-          Aquests usuaris serveixen per validar els fluxos. L’accés real amb
-          Google Workspace s’activarà quan el centre autoritzi l’aplicació.
+          Aquests usuaris serveixen per validar els fluxos. L'accés real amb
+          Google Workspace s'activarà quan el centre autoritzi l'aplicació.
         </span>
         {currentViewer && (
           <div className="current-session">
@@ -37,7 +45,30 @@ export default async function AccessPage() {
             <Link href="/taulell">Continuar</Link>
           </div>
         )}
+        {currentPlatformViewer && (
+          <div className="current-session platform-session">
+            Sessió activa com a <strong>{currentPlatformViewer.name}</strong>.
+            <Link href="/administracio-plataforma">Continuar</Link>
+          </div>
+        )}
       </section>
+
+      {platformAdminEnabled && (
+        <section className="platform-access-card">
+          <div className="platform-access-avatar">{PLATFORM_DEMO_ADMIN.initials}</div>
+          <div>
+            <span>ADMINISTRACIÓ GENERAL · NOMÉS LOCAL</span>
+            <h2>Gestiona els centres de la plataforma</h2>
+            <p>
+              Crea centres, assigna la primera coordinació, defineix límits i
+              suspèn l'accés al servei sense entrar als taulells del centre.
+            </p>
+          </div>
+          <form action="/api/auth/platform-demo" method="post">
+            <button type="submit">Entrar a l'administració general</button>
+          </form>
+        </section>
+      )}
 
       <section className="role-grid" aria-label="Perfils de demostració">
         {DEMO_VIEWERS.map((viewer) => (
@@ -65,11 +96,11 @@ export default async function AccessPage() {
           <span>ACCÉS REAL</span>
           <h2>Google Workspace for Education</h2>
           <p>
-            L’estructura està preparada. Falta crear i autoritzar el client
-            OAuth del centre abans d’activar aquest botó.
+            L'estructura està preparada. Falta crear i autoritzar el client
+            OAuth del centre abans d'activar aquest botó.
           </p>
         </div>
-        <button disabled type="button">Pendent d’autorització</button>
+        <button disabled type="button">Pendent d'autorització</button>
       </section>
     </main>
   );

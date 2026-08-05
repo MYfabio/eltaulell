@@ -533,6 +533,606 @@
   color: var(--navy);
 }
 
+/* Administració general de la plataforma */
+.platform-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(244, 154, 80, .13), transparent 28%),
+    #f5f7f3;
+  color: var(--ink);
+}
+
+.platform-topbar {
+  min-height: 74px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid #e2e6df;
+  background: rgba(255, 255, 255, .96);
+  padding: 0 4vw;
+}
+
+.platform-topbar .portal-user {
+  justify-self: end;
+}
+
+.platform-scope {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.platform-scope strong {
+  color: var(--navy);
+  font-size: 11px;
+}
+
+.platform-scope span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.platform-heading,
+.platform-metrics,
+.platform-workspace {
+  width: min(1240px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.platform-heading {
+  display: grid;
+  grid-template-columns: 1.45fr .75fr;
+  gap: 50px;
+  align-items: end;
+  padding: 52px 0 28px;
+}
+
+.platform-heading p,
+.platform-toolbar p,
+.platform-audit-panel header p {
+  margin: 0 0 7px;
+  color: #d16d35;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.platform-heading h1 {
+  margin: 0;
+  color: var(--navy);
+  font: 700 clamp(36px, 5vw, 60px)/1 Georgia, serif;
+  letter-spacing: -.035em;
+}
+
+.platform-heading > div > span {
+  display: block;
+  max-width: 720px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.platform-heading aside {
+  display: grid;
+  gap: 6px;
+  border-left: 3px solid var(--orange);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255,255,255,.75);
+  padding: 15px 17px;
+}
+
+.platform-heading aside strong {
+  color: var(--navy);
+  font-size: 10px;
+}
+
+.platform-heading aside span {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.platform-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.platform-metrics article {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: end;
+  border: 1px solid #e2e6df;
+  border-radius: 14px;
+  background: white;
+  padding: 18px 20px;
+  box-shadow: 0 8px 26px rgba(37, 50, 71, .04);
+}
+
+.platform-metrics span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.platform-metrics strong {
+  grid-row: span 2;
+  color: var(--navy);
+  font: 700 36px Georgia, serif;
+}
+
+.platform-metrics small {
+  color: #87909c;
+  font-size: 8px;
+}
+
+.platform-workspace {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 80px;
+}
+
+.platform-toolbar {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, .7fr) auto;
+  gap: 16px;
+  align-items: end;
+  border: 1px solid #e2e6df;
+  border-radius: 15px;
+  background: white;
+  padding: 20px;
+}
+
+.platform-toolbar h2,
+.platform-audit-panel h2 {
+  margin: 0;
+  color: var(--navy);
+  font: 700 21px Georgia, serif;
+}
+
+.platform-search,
+.platform-form-grid label,
+.platform-school-settings label {
+  display: grid;
+  gap: 6px;
+  color: #697687;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.platform-search input,
+.platform-form-grid input,
+.platform-form-grid select,
+.platform-school-settings input,
+.platform-school-settings select {
+  width: 100%;
+  min-width: 0;
+  min-height: 39px;
+  border: 1px solid #dce1da;
+  border-radius: 9px;
+  outline: none;
+  background: #fbfcfa;
+  padding: 0 11px;
+  color: var(--navy);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.platform-search input:focus,
+.platform-form-grid input:focus,
+.platform-form-grid select:focus,
+.platform-school-settings input:focus,
+.platform-school-settings select:focus {
+  border-color: #d16d35;
+  box-shadow: 0 0 0 3px rgba(209, 109, 53, .12);
+}
+
+.platform-primary-action,
+.platform-create-form button,
+.platform-school-card footer button {
+  border: 0;
+  border-radius: 9px;
+  background: var(--navy);
+  padding: 11px 14px;
+  color: white;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.platform-create-form {
+  display: grid;
+  gap: 18px;
+  border: 1px solid #e3bd98;
+  border-radius: 16px;
+  background: #fffaf3;
+  padding: 24px;
+}
+
+.platform-create-form header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.platform-create-form header span,
+.platform-access-card > div > span {
+  color: #d16d35;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.platform-create-form h3 {
+  margin: 4px 0 0;
+  color: var(--navy);
+  font: 700 20px Georgia, serif;
+}
+
+.platform-create-form header p {
+  max-width: 390px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.platform-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.platform-create-form footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.platform-create-form footer span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.platform-form-message,
+.platform-inline-message {
+  margin: 0;
+  border-radius: 8px;
+  background: #eef5eb;
+  padding: 10px 12px;
+  color: #52795a;
+  font-size: 9px;
+}
+
+.platform-school-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.platform-school-card {
+  display: grid;
+  gap: 17px;
+  border: 1px solid #e1e5df;
+  border-radius: 15px;
+  background: white;
+  padding: 20px;
+  box-shadow: 0 8px 26px rgba(37, 50, 71, .035);
+}
+
+.platform-school-card.is-suspended {
+  background: #f5f5f2;
+  opacity: .82;
+}
+
+.platform-school-card > header,
+.platform-school-card > footer,
+.platform-audit-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.platform-school-identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.platform-school-identity > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 11px;
+  background: #e7edf4;
+  color: #365b82;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.platform-school-identity div {
+  display: grid;
+  gap: 3px;
+}
+
+.platform-school-identity strong {
+  color: var(--navy);
+  font-size: 13px;
+}
+
+.platform-school-identity small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.platform-status {
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.platform-status.active {
+  background: #e6f2e7;
+  color: #52795a;
+}
+
+.platform-status.suspended {
+  background: #f2e9e7;
+  color: #9a6060;
+}
+
+.platform-school-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.platform-school-facts p {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  border-radius: 9px;
+  background: #f6f8f5;
+  padding: 10px;
+}
+
+.platform-school-facts span {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.platform-school-facts strong {
+  overflow: hidden;
+  color: var(--navy);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-school-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 9px;
+}
+
+.platform-school-card footer {
+  justify-content: flex-start;
+}
+
+.platform-school-card footer .danger-action {
+  background: transparent;
+  color: #a14f37;
+  outline: 1px solid #d9aaa0;
+}
+
+.platform-school-card footer .restore-action {
+  background: #4d7758;
+}
+
+.platform-audit-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #e1e5df;
+  border-radius: 15px;
+  background: white;
+  padding: 22px;
+}
+
+.platform-audit-panel > header > span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.platform-audit-list {
+  display: grid;
+}
+
+.platform-audit-list article {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 11px;
+  align-items: center;
+  border-top: 1px solid #eceee9;
+  padding: 11px 0;
+}
+
+.platform-audit-list article > span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e9f2e9;
+  color: #52795a;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.platform-audit-list article > div {
+  display: grid;
+  gap: 2px;
+}
+
+.platform-audit-list strong {
+  color: var(--navy);
+  font-size: 10px;
+}
+
+.platform-audit-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.platform-audit-list small {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 8px;
+  text-align: right;
+}
+
+.platform-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px dashed #dce1da;
+  border-radius: 12px;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.platform-access-card {
+  width: min(1120px, calc(100% - 40px));
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+  margin: 0 auto 18px;
+  border: 1px solid #e3bd98;
+  border-radius: 16px;
+  background: #fffaf3;
+  padding: 19px 22px;
+}
+
+.platform-access-avatar {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--navy);
+  color: white;
+  font-weight: 900;
+}
+
+.platform-access-card h2 {
+  margin: 4px 0;
+  color: var(--navy);
+  font: 700 20px Georgia, serif;
+}
+
+.platform-access-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.platform-access-card button {
+  border: 0;
+  border-radius: 9px;
+  background: var(--navy);
+  padding: 12px 15px;
+  color: white;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.platform-session {
+  border-left-color: var(--orange);
+  background: #fff7ec;
+}
+
+@media (max-width: 900px) {
+  .platform-topbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .platform-scope {
+    display: none;
+  }
+
+  .platform-heading,
+  .platform-toolbar,
+  .platform-school-list {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .platform-topbar .portal-user div {
+    display: none;
+  }
+
+  .platform-heading,
+  .platform-metrics,
+  .platform-form-grid,
+  .platform-school-facts,
+  .platform-school-settings,
+  .platform-access-card {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-create-form header,
+  .platform-create-form footer,
+  .platform-school-card > footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .platform-create-form header p {
+    text-align: left;
+  }
+
+  .platform-access-card form,
+  .platform-access-card button {
+    width: 100%;
+  }
+
+  .platform-audit-list article {
+    grid-template-columns: 28px 1fr;
+  }
+
+  .platform-audit-list small {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
 .table-scroll {
   width: 100%;
   overflow-x: auto;

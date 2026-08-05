@@ -47,6 +47,8 @@ la participació de l'alumnat i la coordinació del centre.
 Implementat o preparat:
 
 - Estructura multi-centre, grups, membres i taulers a PostgreSQL.
+- Administració general de plataforma separada dels rols de centre, amb alta
+  de centres, coordinació inicial, plans, límits, suspensió i auditoria global.
 - Matriu de permisos per a coordinació, tutoria, delegació i alumnat.
 - Perfils de demostració i navegació adaptada al rol.
 - Administració bàsica de persones, rols, estats i grups.
@@ -71,9 +73,17 @@ Prototipat i validat només en local el 4 d'agost de 2026:
 - Dades demostratives estructurades per provar els fluxos. Encara no es
   consideren persistència de producció ni dades sincronitzades.
 
+Validat en local el 5 d'agost de 2026:
+
+- Alta d'un centre amb coordinació inicial i dades separades.
+- Actualització de pla i límits de persones i grups.
+- Suspensió i reactivació del centre amb bloqueig efectiu dels seus perfils.
+- Registre de les accions a l'auditoria global de plataforma.
+
 Pendent d'implementació real:
 
 - Autenticació de centre amb Google Workspace.
+- Autenticació real i reforçada de l'administració general de plataforma.
 - Autorització OAuth i importació real de cursos i alumnat des de Google Classroom.
 - Persistència PostgreSQL dels nous indicadors, tasques i historials de Tutoria
   IA, amb política de conservació i accés definida pel centre.
