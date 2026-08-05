@@ -169,9 +169,27 @@ export async function getDemoViewer() {
   if (!viewer) return null;
   const school = await db.school.findFirst({
     where: { slug: viewer.schoolSlug },
-    select: { active: true },
+    select: { id: true, active: true },
   });
-  return school && school.active === false ? null : viewer;
+  if (!school) return viewer;
+  if (school.active === false) return null;
+
+  const user = await db.user.findUnique({
+    where: { email: viewer.email.toLowerCase() },
+    select: { id: true },
+  });
+  if (!user) return viewer;
+  const membership = await db.schoolMembership.findUnique({
+    where: { schoolId_userId: { schoolId: school.id, userId: user.id } },
+  });
+  if (
+    !membership ||
+    membership.status !== "ACTIVE" ||
+    membership.role !== viewer.role
+  ) {
+    return null;
+  }
+  return viewer;
 }
 
 export async function getPlatformDemoViewer() {

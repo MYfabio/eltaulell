@@ -22,6 +22,10 @@ Estat: en validació local.
 - Càrrega d'imatges i PDF per tutoria i delegació.
 - Eliminació de fitxers per tutoria i coordinació.
 - Revisió completa de cada recorregut de rol.
+- Autorització central per centre i grup, amb la matrícula activa com a font de
+  veritat i bloqueig explícit de grups no assignats.
+- Post-its persistents a PostgreSQL, amb creació, edició, arxivament i auditoria.
+- Proves automàtiques inicials de rols, grups i separació entre centres.
 
 - Invitacions d'alumnat amb enllaç i codi temporal, limitades al grup de la
   tutoria, amb caducitat, límit d'usos, revocació i auditoria.
@@ -33,8 +37,9 @@ Abans de tancar la fase 1, ja hi ha una demostració local de:
 - Historial de Tutoria IA limitat a perfils autoritzats.
 - Tasques personals, recursos plegables i quatre temes visuals.
 
-Aquestes funcions encara necessiten models persistents i proves d'autorització
-abans de passar a producció.
+Les tasques personals, els indicadors i l'historial de Tutoria IA encara
+necessiten models persistents i una política de conservació abans de passar a
+producció.
 
 ## Fase 2 - Identitat i seguretat de centre
 
@@ -106,7 +111,7 @@ Estat: pendent.
 ## Prioritat immediata
 
 1. Revisar en local el nou panell d'administració general.
-2. Acabar la validació local de la fase 1 amb els quatre perfils.
+2. Persistir les tasques personals, els indicadors i l'historial de Tutoria IA.
 3. Preparar l'accés real amb Google Workspace i la protecció reforçada del
    compte d'administració general.
 4. Preparar una pull request i desplegar només després de l'aprovació.

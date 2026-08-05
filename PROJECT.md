@@ -91,7 +91,9 @@ Pendent d'implementació real:
 - Consultes anònimes persistents i circuit complet de resposta.
 - Calendari persistent i sincronitzat.
 - Assistent educatiu amb regles, proteccions i seguiment d'ús.
-- Proves automatitzades, accessibilitat i pilot amb dades reals anonimitzades.
+- Ampliació de les proves automatitzades, accessibilitat i pilot amb dades reals
+  anonimitzades. La primera matriu de permisos i separació multi-centre ja té
+  cobertura automàtica.
 
 ## Flux de treball
 

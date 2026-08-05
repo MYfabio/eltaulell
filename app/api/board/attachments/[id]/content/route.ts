@@ -1,3 +1,4 @@
+import { boardAccessErrorResponse } from "@/lib/access-http";
 import { getAttachment } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 
@@ -10,7 +11,14 @@ export async function GET(
 
   const { id } = await params;
   const groupId = new URL(request.url).searchParams.get("groupId");
-  const attachment = await getAttachment(viewer, id, groupId);
+  let attachment: Awaited<ReturnType<typeof getAttachment>>;
+  try {
+    attachment = await getAttachment(viewer, id, groupId);
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
   if (!attachment) return new Response("Fitxer no trobat.", { status: 404 });
 
   return new Response(Buffer.from(attachment.content), {

@@ -21,6 +21,7 @@ rmSync(localStateFile, { force: true });
 
 process.env.AUTH_SECRET = "eltaulell-local-preview-only";
 process.env.DATABASE_URL = "postgresql://local-preview.invalid/eltaulell";
+process.env.ELTAULELL_CONSTRAINED_RUNTIME = "1";
 process.env.ELTAULELL_LOCAL_PREVIEW = "1";
 process.env.ELTAULELL_LOCAL_STATE_FILE = localStateFile;
 process.env.NEXT_TELEMETRY_DISABLED = "1";

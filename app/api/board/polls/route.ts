@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { boardAccessErrorResponse } from "@/lib/access-http";
 import { createPoll, listPolls, managePoll, votePoll } from "@/lib/board-store";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS } from "@/lib/permissions";
@@ -35,13 +36,19 @@ export async function GET(request: Request) {
   }
 
   const groupId = new URL(request.url).searchParams.get("groupId");
-  return NextResponse.json({
-    polls: await listPolls(
-      viewer,
-      can(viewer, PERMISSIONS.MANAGE_POLL_RESULTS),
-      groupId,
-    ),
-  });
+  try {
+    return NextResponse.json({
+      polls: await listPolls(
+        viewer,
+        can(viewer, PERMISSIONS.MANAGE_POLL_RESULTS),
+        groupId,
+      ),
+    });
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
 }
 
 export async function POST(request: Request) {
@@ -67,19 +74,25 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
-    {
-      poll: await createPoll(
-        viewer,
-        {
-          ...parsed.data,
-          closesAt: parsed.data.closesAt ?? null,
-        },
-        groupId,
-      ),
-    },
-    { status: 201 },
-  );
+  try {
+    return NextResponse.json(
+      {
+        poll: await createPoll(
+          viewer,
+          {
+            ...parsed.data,
+            closesAt: parsed.data.closesAt ?? null,
+          },
+          groupId,
+        ),
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
 }
 
 export async function PATCH(request: Request) {
@@ -100,12 +113,19 @@ export async function PATCH(request: Request) {
   }
 
   const groupId = new URL(request.url).searchParams.get("groupId");
-  const result = await managePoll(
-    viewer,
-    parsed.data.pollId,
-    parsed.data.action,
-    groupId,
-  );
+  let result: Awaited<ReturnType<typeof managePoll>>;
+  try {
+    result = await managePoll(
+      viewer,
+      parsed.data.pollId,
+      parsed.data.action,
+      groupId,
+    );
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
   if ("error" in result) {
     return NextResponse.json(
       {
@@ -140,12 +160,19 @@ export async function PUT(request: Request) {
   }
 
   const groupId = new URL(request.url).searchParams.get("groupId");
-  const result = await votePoll(
-    viewer,
-    parsed.data.pollId,
-    parsed.data.optionId,
-    groupId,
-  );
+  let result: Awaited<ReturnType<typeof votePoll>>;
+  try {
+    result = await votePoll(
+      viewer,
+      parsed.data.pollId,
+      parsed.data.optionId,
+      groupId,
+    );
+  } catch (error) {
+    const response = boardAccessErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
   if ("error" in result && result.error) {
     const message = {
       NOT_FOUND: "No s'ha trobat l'enquesta d'aquest grup.",

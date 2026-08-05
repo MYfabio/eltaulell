@@ -12,6 +12,13 @@ export interface DatabaseClient {
   platformAdmin: { upsert: DbMethod };
   platformAuditLog: { create: DbMethod; findMany: DbMethod };
   board: { findMany: DbMethod; upsert: DbMethod };
+  postIt: {
+    create: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    updateMany: DbMethod;
+    upsert: DbMethod;
+  };
   boardAttachment: {
     count: DbMethod;
     create: DbMethod;
@@ -72,6 +79,7 @@ type LocalState = {
   memberships: Row[];
   pollOptions: Row[];
   polls: Row[];
+  posts: Row[];
   platformAdmins: Row[];
   platformAuditLogs: Row[];
   schools: Row[];
@@ -90,6 +98,7 @@ function makeState(): LocalState {
     memberships: [],
     pollOptions: [],
     polls: [],
+    posts: [],
     platformAdmins: [],
     platformAuditLogs: [],
     schools: [],
@@ -153,6 +162,11 @@ export function createLocalDb(): DatabaseClient {
     state.groups.find((group) => group.id === id) ?? null;
   const boardByGroupId = (groupId: string) =>
     state.boards.find((board) => board.groupId === groupId) ?? null;
+
+  const postResult = (post: Row) => ({
+    ...post,
+    author: userById(post.authorId),
+  });
 
   function pollResult(poll: Row, voterKey?: string) {
     return {
@@ -521,6 +535,64 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
+    postIt: {
+      async upsert({ where, create }: Row) {
+        const existing = state.posts.find((post) => post.id === where.id);
+        if (existing) return postResult(existing);
+        const post = {
+          id: where.id || randomUUID(),
+          status: "OPEN",
+          anonymous: false,
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.posts.push(post);
+        return postResult(post);
+      },
+      async findMany({ where }: Row) {
+        return state.posts
+          .filter(
+            (post) =>
+              post.boardId === where.boardId &&
+              (!where.status || post.status === where.status),
+          )
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .map(postResult);
+      },
+      async create({ data }: Row) {
+        const post = {
+          id: randomUUID(),
+          status: "OPEN",
+          anonymous: false,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.posts.push(post);
+        return postResult(post);
+      },
+      async findFirst({ where }: Row) {
+        const post = state.posts.find(
+          (candidate) =>
+            candidate.id === where.id &&
+            candidate.boardId === where.boardId &&
+            (!where.status || candidate.status === where.status),
+        );
+        return post ? postResult(post) : null;
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.posts.filter(
+          (post) =>
+            post.id === where.id &&
+            post.boardId === where.boardId &&
+            (!where.status || post.status === where.status),
+        );
+        matches.forEach((post) => Object.assign(post, data, { updatedAt: now() }));
+        return { count: matches.length };
+      },
+    },
+
     groupMembership: {
       async count({ where }: Row) {
         return state.groupMemberships.filter((membership) =>
@@ -548,6 +620,7 @@ export function createLocalDb(): DatabaseClient {
               group: {
                 id: group.id,
                 name: group.name,
+                schoolId: group.schoolId,
                 board: boardByGroupId(group.id),
               },
             };
