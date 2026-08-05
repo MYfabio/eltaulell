@@ -25,6 +25,10 @@ En donar d'alta un centre o una persona es genera un enllaç d'activació d'un s
 ús. La persona crea la seva contrasenya i el compte només passa a actiu després
 de completar aquest pas.
 
+La demostració pública es pot activar amb `DEMO_ACCESS_ENABLED=1`. L'accés real
+continua a `/acces` i mostra un enllaç separat cap a `/demo`, on els quatre perfils
+de prova utilitzen exclusivament el centre de demostració.
+
 Consulta [PROJECT.md](./PROJECT.md) per entendre l'abast i les decisions del
 projecte, i [ROADMAP.md](./ROADMAP.md) per veure què està fet i què falta.
 

@@ -339,6 +339,7 @@
 .role-grid,
 .account-access-card,
 .centre-admin-access-card,
+.demo-entry-card,
 .real-access-card {
   width: min(1120px, calc(100% - 40px));
   margin: 0 auto;
@@ -360,6 +361,62 @@
   margin-left: 8px;
   color: var(--navy);
   font-weight: 800;
+}
+
+.demo-entry-card {
+  margin-bottom: 18px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border: 1px solid #ead9bd;
+  border-radius: 16px;
+  background: #fff7e8;
+}
+
+.demo-entry-card span {
+  color: #a96a2d;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.demo-entry-card h2 {
+  margin: 6px 0;
+  color: var(--navy);
+  font: 700 22px Georgia, serif;
+}
+
+.demo-entry-card p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.demo-entry-button {
+  min-width: 160px;
+  border-radius: 9px;
+  background: #d16d35;
+  padding: 12px 18px;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.demo-back-link {
+  color: var(--navy);
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.demo-access-page .role-grid {
+  padding-bottom: 80px;
 }
 
 .centre-admin-access-card {
@@ -1617,6 +1674,15 @@
   .real-access-card {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .demo-entry-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .demo-entry-button {
+    width: 100%;
   }
 
   .account-access-card,
