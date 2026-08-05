@@ -43,6 +43,11 @@ export function isCentreAdminLoginConfigured() {
   return configuredCentreAdmin() !== null;
 }
 
+export function isConfiguredCentreAdminEmail(email: string) {
+  const config = configuredCentreAdmin();
+  return config ? sameText(email.trim().toLowerCase(), config.email) : false;
+}
+
 export function verifyCentreAdminCredentials(email: string, password: string) {
   const config = configuredCentreAdmin();
   if (!config) return null;

@@ -303,6 +303,10 @@ export function isDemoAccessEnabled() {
     process.env.DEMO_ACCESS_ENABLED === "1";
 }
 
+export function canUsePublicDemoRole(role: DemoRole) {
+  return process.env.ELTAULELL_LOCAL_PREVIEW === "1" || role === "STUDENT";
+}
+
 export function createPlatformDemoSession() {
   return createDemoSession(PLATFORM_DEMO_ADMIN.id);
 }

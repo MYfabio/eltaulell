@@ -67,8 +67,8 @@ export default async function AccessPage({
             <span>ENTORN DE PROVA</span>
             <h2>Vols veure com funciona El Taulell?</h2>
             <p>
-              Entra a la demo amb un perfil de coordinació, tutoria, delegació
-              o alumnat. Les dades de prova estan separades dels centres reals.
+              Entra directament al taulell d'un alumne i descobreix què pot fer
+              cada rol. Les dades de prova estan separades dels centres reals.
             </p>
           </div>
           <Link className="demo-entry-button" href="/demo">

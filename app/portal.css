@@ -340,6 +340,9 @@
 .account-access-card,
 .centre-admin-access-card,
 .demo-entry-card,
+.student-demo-entry,
+.demo-roles-section,
+.demo-contact-section,
 .real-access-card {
   width: min(1120px, calc(100% - 40px));
   margin: 0 auto;
@@ -417,6 +420,248 @@
 
 .demo-access-page .role-grid {
   padding-bottom: 80px;
+}
+
+.student-demo-entry {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  border: 1px solid #d8e4d4;
+  border-radius: 18px;
+  background: #eff7ec;
+}
+
+.student-demo-avatar {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #d4e9cf;
+  color: var(--navy);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.student-demo-entry span,
+.demo-roles-section > header > p,
+.demo-contact-section > div > p {
+  margin: 0;
+  color: #52795a;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.student-demo-entry h2 {
+  margin: 5px 0;
+  color: var(--navy);
+  font: 700 24px Georgia, serif;
+}
+
+.student-demo-entry p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.student-demo-entry button,
+.demo-contact-section button {
+  border: 0;
+  border-radius: 10px;
+  background: var(--navy);
+  padding: 13px 18px;
+  color: white;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.demo-roles-section {
+  margin-top: 18px;
+  padding: 30px 0 0;
+}
+
+.demo-roles-section > header h2,
+.demo-contact-section > div h2 {
+  margin: 6px 0;
+  color: var(--navy);
+  font: 700 28px Georgia, serif;
+}
+
+.demo-roles-section > header > span,
+.demo-contact-section > div > span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.demo-role-explainers {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.demo-role-explainers article {
+  min-height: 220px;
+  padding: 20px;
+  border: 1px solid #e4e6e1;
+  border-radius: 15px;
+  background: white;
+}
+
+.demo-role-explainers article > div {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #e7edf3;
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.demo-role-explainers article:nth-child(2) > div {
+  background: #f6dfb9;
+}
+
+.demo-role-explainers article:nth-child(3) > div {
+  background: #f1d6dc;
+}
+
+.demo-role-explainers article:nth-child(4) > div {
+  background: #dcebd9;
+}
+
+.demo-role-explainers article > span {
+  color: #d16d35;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.demo-role-explainers h3 {
+  margin: 7px 0;
+  color: var(--navy);
+  font: 700 17px Georgia, serif;
+}
+
+.demo-role-explainers p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.demo-contact-section {
+  margin-top: 28px;
+  margin-bottom: 80px;
+  padding: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 38px;
+  border: 1px solid #ead9bd;
+  border-radius: 18px;
+  background: #fff8ec;
+}
+
+.demo-contact-section > div > small {
+  display: block;
+  margin-top: 18px;
+  color: #8b745f;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.demo-contact-section form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.demo-contact-section label {
+  display: grid;
+  gap: 6px;
+  color: #687586;
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.demo-contact-section input,
+.demo-contact-section select,
+.demo-contact-section textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d9cfbd;
+  border-radius: 9px;
+  background: white;
+  padding: 10px 11px;
+  color: var(--navy);
+  font: inherit;
+  font-size: 10px;
+}
+
+.demo-contact-section input,
+.demo-contact-section select {
+  height: 40px;
+}
+
+.demo-contact-section textarea {
+  resize: vertical;
+}
+
+.demo-contact-message,
+.demo-contact-consent,
+.demo-contact-status,
+.demo-contact-section button {
+  grid-column: 1 / -1;
+}
+
+.demo-contact-consent {
+  grid-template-columns: auto 1fr !important;
+  align-items: start;
+  gap: 9px !important;
+  font-weight: 650 !important;
+  line-height: 1.45;
+}
+
+.demo-contact-consent input {
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+}
+
+.demo-contact-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.demo-contact-status {
+  margin: 0;
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 10px;
+}
+
+.demo-contact-status.success {
+  background: #e6f2e3;
+  color: #416a49;
+}
+
+.demo-contact-status.error {
+  background: #f5e8e8;
+  color: #934f4f;
 }
 
 .centre-admin-access-card {
@@ -1641,6 +1886,14 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .demo-role-explainers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .demo-contact-section {
+    grid-template-columns: 1fr;
+  }
+
   .portal-panel,
   .portal-panel.wide {
     grid-column: span 6;
@@ -1664,6 +1917,24 @@
 
   .role-grid {
     grid-template-columns: 1fr;
+  }
+
+  .student-demo-entry,
+  .demo-role-explainers,
+  .demo-contact-section form {
+    grid-template-columns: 1fr;
+  }
+
+  .student-demo-entry form,
+  .student-demo-entry button {
+    width: 100%;
+  }
+
+  .demo-contact-message,
+  .demo-contact-consent,
+  .demo-contact-status,
+  .demo-contact-section button {
+    grid-column: auto;
   }
 
   .portal-panel,
@@ -3021,5 +3292,172 @@
   .invitation-list article {
     align-items: flex-start;
     grid-template-columns: 1fr;
+  }
+}
+
+/* Sol·licituds de demo */
+.demo-request-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.demo-request-summary {
+  padding: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border: 1px solid #ead9bd;
+  border-radius: 15px;
+  background: #fff8ec;
+}
+
+.demo-request-summary > div {
+  display: grid;
+  gap: 4px;
+}
+
+.demo-request-summary span {
+  color: #a96a2d;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.demo-request-summary strong {
+  color: var(--navy);
+  font: 700 38px Georgia, serif;
+}
+
+.demo-request-summary p {
+  max-width: 600px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.demo-request-list {
+  display: grid;
+  gap: 14px;
+}
+
+.demo-request-list > article {
+  padding: 22px;
+  border: 1px solid #e4e6e1;
+  border-radius: 15px;
+  background: white;
+}
+
+.demo-request-list > article > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.demo-request-list header > div > span {
+  color: #d16d35;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.demo-request-list h2 {
+  margin: 5px 0 2px;
+  font: 700 20px Georgia, serif;
+}
+
+.demo-request-list header p,
+.demo-request-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.demo-request-status {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff0d5;
+  color: #95642e;
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.demo-request-status.status-invited {
+  background: #e6f2e3;
+  color: #416a49;
+}
+
+.demo-request-list dl {
+  margin: 18px 0 0;
+  display: flex;
+  gap: 30px;
+}
+
+.demo-request-list dl > div {
+  display: grid;
+  gap: 3px;
+}
+
+.demo-request-list dt {
+  color: #9299a3;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.demo-request-list dd {
+  margin: 0;
+  color: var(--navy);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.demo-request-message {
+  margin-top: 14px;
+  border-left: 3px solid #ead9bd;
+  padding: 8px 11px;
+  line-height: 1.55;
+}
+
+.demo-request-list footer {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.demo-request-list footer > button {
+  width: fit-content;
+  border: 0;
+  border-radius: 9px;
+  background: var(--navy);
+  padding: 11px 14px;
+  color: white;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.demo-request-list footer > button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+@media (max-width: 620px) {
+  .demo-request-summary,
+  .demo-request-list > article > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .demo-request-list dl {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .demo-request-list footer > button {
+    width: 100%;
   }
 }

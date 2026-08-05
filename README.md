@@ -26,8 +26,11 @@ En donar d'alta un centre o una persona es genera un enllaç d'activació d'un s
 de completar aquest pas.
 
 La demostració pública es pot activar amb `DEMO_ACCESS_ENABLED=1`. L'accés real
-continua a `/acces` i mostra un enllaç separat cap a `/demo`, on els quatre perfils
-de prova utilitzen exclusivament el centre de demostració.
+continua a `/acces` i mostra un enllaç separat cap a `/demo`. La visita pública
+entra només al taulell d'alumne; la resta de rols s'expliquen sense exposar-ne
+l'accés. El formulari de contacte desa les sol·licituds a PostgreSQL i la persona
+administradora configurada les gestiona des de `/coordinacio/sollicituds-demo`,
+on pot generar un enllaç d'activació individual i d'un sol ús.
 
 Consulta [PROJECT.md](./PROJECT.md) per entendre l'abast i les decisions del
 projecte, i [ROADMAP.md](./ROADMAP.md) per veure què està fet i què falta.
