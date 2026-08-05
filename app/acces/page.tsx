@@ -6,7 +6,13 @@ import {
   isPlatformDemoEnabled,
   PLATFORM_DEMO_ADMIN,
 } from "@/lib/demo-auth";
-import { PERMISSION_LABELS } from "@/lib/permissions";
+import { isCentreAdminLoginConfigured } from "@/lib/centre-admin-auth";
+import {
+  PERMISSION_LABELS,
+  PERMISSIONS,
+  type AppRole,
+  type Permission,
+} from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +23,40 @@ const roleDescriptions = {
   STUDENT: "Consulta el taulell, les tasques i participa de manera segura.",
 };
 
-export default async function AccessPage() {
+const featuredPermissions: Record<AppRole, Permission[]> = {
+  COORDINATOR: [
+    PERMISSIONS.MANAGE_SCHOOL,
+    PERMISSIONS.MANAGE_USERS,
+    PERMISSIONS.MANAGE_GROUPS,
+  ],
+  TUTOR: [
+    PERMISSIONS.CREATE_TASK,
+    PERMISSIONS.MODERATE_BOARD,
+    PERMISSIONS.VIEW_STUDENT_FOLLOWUP,
+  ],
+  DELEGATE: [
+    PERMISSIONS.ARRANGE_BOARD,
+    PERMISSIONS.CREATE_ACTIVITY,
+    PERMISSIONS.CREATE_POLL,
+  ],
+  STUDENT: [
+    PERMISSIONS.ARRANGE_BOARD,
+    PERMISSIONS.VOTE_POLL,
+    PERMISSIONS.USE_ASSISTANT,
+  ],
+};
+
+export default async function AccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string | string[] }>;
+}) {
   const currentViewer = await getDemoViewer();
   const currentPlatformViewer = await getPlatformDemoViewer();
   const platformAdminEnabled = isPlatformDemoEnabled();
+  const centreAdminEnabled = isCentreAdminLoginConfigured();
+  const params = await searchParams;
+  const loginError = Array.isArray(params.error) ? params.error[0] : params.error;
 
   return (
     <main className="access-page">
@@ -70,6 +106,46 @@ export default async function AccessPage() {
         </section>
       )}
 
+      {centreAdminEnabled && (
+        <section className="centre-admin-access-card">
+          <div>
+            <span>ACCÉS SEGUR · ADMINISTRACIÓ DEL CENTRE</span>
+            <h2>Entra amb el compte responsable del col·legi</h2>
+            <p>
+              Aquest perfil equival a coordinació: gestiona persones, rols, grups,
+              invitacions i integracions només dins del seu centre.
+            </p>
+          </div>
+          <form action="/api/auth/centre-admin" method="post">
+            <label>
+              Correu electrònic
+              <input autoComplete="username" name="email" required type="email" />
+            </label>
+            <label>
+              Contrasenya
+              <input
+                autoComplete="current-password"
+                minLength={8}
+                name="password"
+                required
+                type="password"
+              />
+            </label>
+            {loginError === "invalid" && (
+              <p className="centre-admin-login-error" role="alert">
+                El correu o la contrasenya no són correctes.
+              </p>
+            )}
+            {loginError === "locked" && (
+              <p className="centre-admin-login-error" role="alert">
+                Massa intents. Torna-ho a provar d'aquí a quinze minuts.
+              </p>
+            )}
+            <button type="submit">Entrar a l'administració del centre</button>
+          </form>
+        </section>
+      )}
+
       <section className="role-grid" aria-label="Perfils de demostració">
         {DEMO_VIEWERS.map((viewer) => (
           <article className={`role-card role-${viewer.role.toLowerCase()}`} key={viewer.id}>
@@ -78,7 +154,7 @@ export default async function AccessPage() {
             <h2>{viewer.name}</h2>
             <p>{roleDescriptions[viewer.role]}</p>
             <div className="role-permissions" aria-label={`Permisos de ${viewer.roleLabel}`}>
-              {viewer.permissions.slice(0, 3).map((permission) => (
+              {featuredPermissions[viewer.role].map((permission) => (
                 <span key={permission}>{PERMISSION_LABELS[permission]}</span>
               ))}
             </div>

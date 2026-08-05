@@ -453,13 +453,16 @@ export function createLocalDb(): DatabaseClient {
     },
 
     schoolMembership: {
-      async upsert({ where, create }: Row) {
+      async upsert({ where, create, update }: Row) {
         const key = where.schoolId_userId;
         const existing = state.memberships.find(
           (membership) =>
             membership.schoolId === key.schoolId && membership.userId === key.userId,
         );
-        if (existing) return existing;
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          return existing;
+        }
         const membership = {
           id: randomUUID(),
           createdAt: now(),

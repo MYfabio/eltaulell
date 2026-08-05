@@ -7,6 +7,7 @@ import {
   canViewStudent,
 } from "../lib/access-policy.ts";
 import { can, canCreatePost, PERMISSIONS } from "../lib/permissions.ts";
+import { createPasswordHash, passwordMatches } from "../lib/credential-policy.ts";
 import { isSessionUsable } from "../lib/session-policy.ts";
 
 const subjects = {
@@ -118,6 +119,16 @@ test("the role permission matrix blocks student publishing and delegate moderati
   assert.equal(can("DELEGATE", PERMISSIONS.MODERATE_BOARD), false);
   assert.equal(can("TUTOR", PERMISSIONS.MODERATE_BOARD), true);
   assert.equal(can("COORDINATOR", PERMISSIONS.MANAGE_USERS), true);
+  assert.equal(can("DELEGATE", PERMISSIONS.ARRANGE_BOARD), true);
+  assert.equal(can("STUDENT", PERMISSIONS.ARRANGE_BOARD), true);
+  assert.equal(can("TUTOR", PERMISSIONS.ARRANGE_BOARD), false);
+});
+
+test("centre administrator passwords are verified from a salted hash", () => {
+  const encodedHash = createPasswordHash("temporary-test-password", "fixed-test-salt");
+  assert.equal(passwordMatches("temporary-test-password", encodedHash), true);
+  assert.equal(passwordMatches("wrong-password", encodedHash), false);
+  assert.equal(passwordMatches("temporary-test-password", "invalid-hash"), false);
 });
 
 test("a persistent session requires an active membership in an active school", () => {

@@ -182,7 +182,7 @@ export default function BoardClient({
   const taskStorageKey = `eltaulell-learning-tasks-${taskOwnerId}`;
   const cardPositionStorageKey =
     `eltaulell-card-positions-${viewer.id}-${selectedBoard.groupId}`;
-  const canArrangeBoard = viewer.role === "STUDENT";
+  const canArrangeBoard = can(viewer, PERMISSIONS.ARRANGE_BOARD);
   const boardRef = useRef<HTMLDivElement>(null);
   const cardDragRef = useRef<CardDragState | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);

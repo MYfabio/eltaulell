@@ -24,7 +24,7 @@ export default async function TutoringPage() {
       description={
         isDelegate
           ? "Representa el grup, prepara propostes i consulta les activitats compartides."
-          : "Revisa l'evolució de les tasques, els resultats i els possibles bloquejos del grup."
+          : "Revisa l'evolució de les tasques, els resultats i el consum anònim de la Tutoria IA."
       }
       eyebrow={`${viewer.school.toUpperCase()} · ${viewer.groupName.toUpperCase()}`}
       title={isDelegate ? "Espai de delegació" : `Tutoria de ${viewer.groupName}`}
@@ -69,7 +69,8 @@ export default async function TutoringPage() {
             <h2>Participació del grup</h2>
             <p>
               Pots veure les activitats i propostes compartides, però el seguiment
-              individual, les notes i l'historial de la IA queden reservats a tutoria.
+              individual i les notes queden reservats a tutoria. Les converses amb
+              la IA són privades i només generen estadístiques anònimes del grup.
             </p>
             <div className="permission-chips">
               <span>Activitats del grup</span>
