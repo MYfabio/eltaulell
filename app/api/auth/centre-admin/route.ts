@@ -44,8 +44,7 @@ function recordFailure(key: string) {
   current.count += 1;
 }
 
-function requestOrigins(request: NextRequest) {
-  const origins = new Set([request.nextUrl.origin]);
+function forwardedOrigin(request: NextRequest) {
   const forwardedHost = request.headers.get("x-forwarded-host")
     ?.split(",")[0]
     ?.trim();
@@ -53,15 +52,25 @@ function requestOrigins(request: NextRequest) {
     ?.split(",")[0]
     ?.trim();
 
-  if (forwardedHost && forwardedProto) {
-    origins.add(`${forwardedProto}://${forwardedHost}`);
-  }
+  return forwardedHost && forwardedProto
+    ? `${forwardedProto}://${forwardedHost}`
+    : null;
+}
+
+function requestOrigins(request: NextRequest) {
+  const origins = new Set([request.nextUrl.origin]);
+  const publicOrigin = forwardedOrigin(request);
+  if (publicOrigin) origins.add(publicOrigin);
 
   return origins;
 }
 
+function redirectUrl(request: NextRequest, pathname: string) {
+  return new URL(pathname, forwardedOrigin(request) ?? request.nextUrl.origin);
+}
+
 function redirectToAccess(request: NextRequest, error: "invalid" | "locked") {
-  return NextResponse.redirect(new URL(`/acces?error=${error}`, request.url), 303);
+  return NextResponse.redirect(redirectUrl(request, `/acces?error=${error}`), 303);
 }
 
 export async function POST(request: NextRequest) {
@@ -91,7 +100,7 @@ export async function POST(request: NextRequest) {
   attempts.delete(key);
   const subject = await ensureCentreAdmin(config);
   const session = await createPersistentSession(subject.userId, subject.membershipId);
-  const response = NextResponse.redirect(new URL("/coordinacio", request.url), 303);
+  const response = NextResponse.redirect(redirectUrl(request, "/coordinacio"), 303);
   response.cookies.set(SESSION_COOKIE, session.token, {
     httpOnly: true,
     maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
