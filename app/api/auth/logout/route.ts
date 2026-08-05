@@ -6,7 +6,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/demo-auth";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   await revokePersistentSession(request.cookies.get(SESSION_COOKIE)?.value);
   const response = new NextResponse(null, {
     status: 303,

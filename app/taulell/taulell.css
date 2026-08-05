@@ -142,9 +142,13 @@
 
 .session-exit {
   margin-left: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #788494;
   font-size: 9px;
   text-decoration: underline;
+  cursor: pointer;
 }
 
 .welcome {

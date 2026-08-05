@@ -29,7 +29,9 @@ export default async function PlatformAdministrationPage() {
             <strong>{viewer.name}</strong>
             <small>{viewer.roleLabel}</small>
           </div>
-          <Link href="/api/auth/logout">Sortir</Link>
+          <form action="/api/auth/logout" method="post">
+            <button type="submit">Sortir</button>
+          </form>
         </div>
       </header>
 

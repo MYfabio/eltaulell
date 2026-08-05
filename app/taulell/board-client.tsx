@@ -673,7 +673,9 @@ export default function BoardClient({
             <strong>{viewer.name}</strong>
             <span>{viewer.roleLabel} · {viewer.groupName}</span>
           </div>
-          <Link className="session-exit" href="/api/auth/logout">Sortir</Link>
+          <form action="/api/auth/logout" method="post">
+            <button className="session-exit" type="submit">Sortir</button>
+          </form>
         </div>
       </header>
 
