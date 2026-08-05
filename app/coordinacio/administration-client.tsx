@@ -27,6 +27,7 @@ function PersonRow({ person, groups }: { person: AdminPerson; groups: AdminGroup
   const [groupId, setGroupId] = useState(person.groups[0]?.id || groups[0]?.id || "");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [activationLink, setActivationLink] = useState("");
 
   useEffect(() => {
     setRole(person.role);
@@ -48,6 +49,27 @@ function PersonRow({ person, groups }: { person: AdminPerson; groups: AdminGroup
       return;
     }
     setMessage("Canvis desats.");
+    setBusy(false);
+    router.refresh();
+  }
+
+  async function createAccess() {
+    setBusy(true);
+    setMessage("");
+    setActivationLink("");
+    const response = await fetch(
+      `/api/admin/users/${encodeURIComponent(person.membershipId)}/invite`,
+      { method: "POST" },
+    );
+    if (!response.ok) {
+      setMessage(await responseMessage(response));
+      setBusy(false);
+      return;
+    }
+    const body = await response.json();
+    setActivationLink(new URL(body.activationPath, window.location.origin).toString());
+    setMessage("Enllaç d'accés preparat.");
+    setStatus("INVITED");
     setBusy(false);
     router.refresh();
   }
@@ -90,7 +112,19 @@ function PersonRow({ person, groups }: { person: AdminPerson; groups: AdminGroup
       </td>
       <td className="admin-row-action">
         <button disabled={busy} onClick={save} type="button">{busy ? "Desant…" : "Desar"}</button>
-        {message && <small className={message === "Canvis desats." ? "form-success" : "form-error"}>{message}</small>}
+        <button className="admin-link-button" disabled={busy} onClick={createAccess} type="button">
+          Generar accés
+        </button>
+        {message && <small className={message === "Canvis desats." || activationLink ? "form-success" : "form-error"}>{message}</small>}
+        {activationLink && (
+          <button
+            className="admin-copy-link"
+            onClick={() => navigator.clipboard.writeText(activationLink)}
+            type="button"
+          >
+            Copiar invitació
+          </button>
+        )}
       </td>
     </tr>
   );
@@ -101,12 +135,14 @@ function PersonForm({ groups }: { groups: AdminGroup[] }) {
   const [role, setRole] = useState<AppRole>("TUTOR");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [activationLink, setActivationLink] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     setBusy(true);
     setMessage("");
+    setActivationLink("");
     const form = new FormData(formElement);
     const response = await fetch("/api/admin/users", {
       method: "POST",
@@ -115,7 +151,6 @@ function PersonForm({ groups }: { groups: AdminGroup[] }) {
         name: form.get("name"),
         email: form.get("email"),
         role,
-        status: form.get("status"),
         groupId: role === "COORDINATOR" ? null : form.get("groupId"),
       }),
     });
@@ -124,9 +159,11 @@ function PersonForm({ groups }: { groups: AdminGroup[] }) {
       setBusy(false);
       return;
     }
+    const body = await response.json();
     formElement.reset();
     setRole("TUTOR");
-    setMessage("Persona afegida correctament.");
+    setActivationLink(new URL(body.activationPath, window.location.origin).toString());
+    setMessage("Persona afegida. Copia i envia-li l'enllaç d'activació.");
     setBusy(false);
     router.refresh();
   }
@@ -141,12 +178,7 @@ function PersonForm({ groups }: { groups: AdminGroup[] }) {
             {ROLES.map((value) => <option key={value} value={value}>{ROLE_LABELS[value]}</option>)}
           </select>
         </label>
-        <label>Estat inicial
-          <select defaultValue="ACTIVE" name="status">
-            <option value="ACTIVE">Actiu/iva</option>
-            <option value="INVITED">Convidat/ada</option>
-          </select>
-        </label>
+        <p className="admin-invite-note">Quedarà pendent fins que activi el compte.</p>
       </div>
       <label>Grup
         <select disabled={role === "COORDINATOR"} name="groupId" required={role !== "COORDINATOR"}>
@@ -157,7 +189,15 @@ function PersonForm({ groups }: { groups: AdminGroup[] }) {
       <button className="admin-submit" disabled={busy || (role !== "COORDINATOR" && !groups.length)} type="submit">
         {busy ? "Afegint…" : "Afegir persona"}
       </button>
-      {message && <p className={message.includes("correctament") ? "form-success" : "form-error"}>{message}</p>}
+      {message && <p className={activationLink ? "form-success" : "form-error"}>{message}</p>}
+      {activationLink && (
+        <div className="activation-link-result">
+          <input aria-label="Enllaç d'activació" readOnly value={activationLink} />
+          <button onClick={() => navigator.clipboard.writeText(activationLink)} type="button">
+            Copiar enllaç
+          </button>
+        </div>
+      )}
     </form>
   );
 }

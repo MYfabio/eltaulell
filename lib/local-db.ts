@@ -50,6 +50,17 @@ export interface DatabaseClient {
     update: DbMethod;
     updateMany: DbMethod;
   };
+  invitation: {
+    create: DbMethod;
+    findUnique: DbMethod;
+    update: DbMethod;
+    updateMany: DbMethod;
+  };
+  passwordCredential: {
+    findUnique: DbMethod;
+    update: DbMethod;
+    upsert: DbMethod;
+  };
   school: {
     create: DbMethod;
     findFirst: DbMethod;
@@ -62,6 +73,7 @@ export interface DatabaseClient {
     count: DbMethod;
     create: DbMethod;
     findFirst: DbMethod;
+    findMany: DbMethod;
     findUnique: DbMethod;
     update: DbMethod;
     upsert: DbMethod;
@@ -81,6 +93,7 @@ type LocalState = {
   boards: Row[];
   groupMemberships: Row[];
   groupInvites: Row[];
+  invitations: Row[];
   groups: Row[];
   memberships: Row[];
   pollOptions: Row[];
@@ -88,6 +101,7 @@ type LocalState = {
   posts: Row[];
   platformAdmins: Row[];
   platformAuditLogs: Row[];
+  passwordCredentials: Row[];
   schools: Row[];
   sessions: Row[];
   users: Row[];
@@ -101,6 +115,7 @@ function makeState(): LocalState {
     boards: [],
     groupMemberships: [],
     groupInvites: [],
+    invitations: [],
     groups: [],
     memberships: [],
     pollOptions: [],
@@ -108,6 +123,7 @@ function makeState(): LocalState {
     posts: [],
     platformAdmins: [],
     platformAuditLogs: [],
+    passwordCredentials: [],
     schools: [],
     sessions: [],
     users: [],
@@ -227,9 +243,12 @@ export function createLocalDb(): DatabaseClient {
     },
 
     school: {
-      async upsert({ where, create }: Row) {
+      async upsert({ where, create, update }: Row) {
         const existing = state.schools.find((school) => school.slug === where.slug);
-        if (existing) return existing;
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          return existing;
+        }
         const school = {
           id: randomUUID(),
           emailDomain: null,
@@ -298,8 +317,7 @@ export function createLocalDb(): DatabaseClient {
               .filter(
                 (membership) =>
                   membership.schoolId === school.id &&
-                  membership.role === "COORDINATOR" &&
-                  membership.status === "ACTIVE",
+                  membership.role === "COORDINATOR",
               )
               .map((membership) => ({
                 ...membership,
@@ -452,6 +470,84 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
+    passwordCredential: {
+      async findUnique({ where }: Row) {
+        return state.passwordCredentials.find((credential) =>
+          where.id ? credential.id === where.id : credential.userId === where.userId,
+        ) ?? null;
+      },
+      async upsert({ where, update, create }: Row) {
+        const existing = state.passwordCredentials.find(
+          (credential) => credential.userId === where.userId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          return existing;
+        }
+        const credential = {
+          id: randomUUID(),
+          failedAttempts: 0,
+          lockedUntil: null,
+          passwordSetAt: now(),
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.passwordCredentials.push(credential);
+        return credential;
+      },
+      async update({ where, data }: Row) {
+        const credential = state.passwordCredentials.find(
+          (candidate) => candidate.id === where.id,
+        );
+        if (!credential) throw new Error("Credential not found");
+        Object.assign(credential, data, { updatedAt: now() });
+        return credential;
+      },
+    },
+
+    invitation: {
+      async create({ data }: Row) {
+        if (state.invitations.some((invitation) => invitation.tokenHash === data.tokenHash)) {
+          throw uniqueError("Invitation token already exists");
+        }
+        const invitation = {
+          id: randomUUID(),
+          acceptedAt: null,
+          acceptedById: null,
+          createdAt: now(),
+          ...data,
+        };
+        state.invitations.push(invitation);
+        return invitation;
+      },
+      async findUnique({ where, include }: Row) {
+        const invitation = state.invitations.find((candidate) =>
+          where.id ? candidate.id === where.id : candidate.tokenHash === where.tokenHash,
+        );
+        if (!invitation) return null;
+        return include?.school
+          ? { ...invitation, school: schoolById(invitation.schoolId) }
+          : invitation;
+      },
+      async update({ where, data }: Row) {
+        const invitation = state.invitations.find((candidate) => candidate.id === where.id);
+        if (!invitation) throw new Error("Invitation not found");
+        Object.assign(invitation, data);
+        return invitation;
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.invitations.filter((invitation) => {
+          if (where.schoolId && invitation.schoolId !== where.schoolId) return false;
+          if (where.email && invitation.email !== where.email) return false;
+          if (where.acceptedAt === null && invitation.acceptedAt !== null) return false;
+          return true;
+        });
+        matches.forEach((invitation) => Object.assign(invitation, data));
+        return { count: matches.length };
+      },
+    },
+
     schoolMembership: {
       async upsert({ where, create, update }: Row) {
         const key = where.schoolId_userId;
@@ -483,6 +579,12 @@ export function createLocalDb(): DatabaseClient {
           if (where.school?.slug && schoolById(candidate.schoolId)?.slug !== where.school.slug) {
             return false;
           }
+          if (
+            where.school?.active !== undefined &&
+            schoolById(candidate.schoolId)?.active !== where.school.active
+          ) {
+            return false;
+          }
           return true;
         });
         if (!membership) return null;
@@ -497,6 +599,26 @@ export function createLocalDb(): DatabaseClient {
               membership.schoolId === key.schoolId && membership.userId === key.userId,
           ) ?? null
         );
+      },
+      async findMany({ where }: Row) {
+        return state.memberships
+          .filter((membership) => {
+            if (where.userId && membership.userId !== where.userId) return false;
+            if (where.status && membership.status !== where.status) return false;
+            const school = schoolById(membership.schoolId);
+            if (where.school?.active !== undefined && school?.active !== where.school.active) {
+              return false;
+            }
+            if (where.school?.slug && school?.slug !== where.school.slug) return false;
+            return true;
+          })
+          .map((membership) => ({
+            ...membership,
+            school: schoolById(membership.schoolId),
+          }))
+          .sort((left, right) =>
+            String(left.school?.name || "").localeCompare(String(right.school?.name || "")),
+          );
       },
       async create({ data }: Row) {
         if (

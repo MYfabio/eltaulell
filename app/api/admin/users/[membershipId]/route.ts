@@ -58,6 +58,18 @@ export async function PATCH(
     if (!group) return NextResponse.json({ error: "El grup no pertany a aquest centre." }, { status: 400 });
   }
 
+  if (status === "ACTIVE" && existing.status === "INVITED") {
+    const credential = await db.passwordCredential.findUnique({
+      where: { userId: existing.userId },
+    });
+    if (!credential) {
+      return NextResponse.json(
+        { error: "La persona ha d'activar el compte des de la seva invitació." },
+        { status: 400 },
+      );
+    }
+  }
+
   const removesActiveCoordinator = existing.role === "COORDINATOR"
     && existing.status === "ACTIVE"
     && (role !== "COORDINATOR" || status !== "ACTIVE");
@@ -85,7 +97,7 @@ export async function PATCH(
           data: { groupId, schoolMembershipId: existing.id, role: groupRole },
         });
       }
-      if (status === "SUSPENDED") {
+      if (status !== "ACTIVE") {
         await transaction.session.updateMany({
           where: { schoolMembershipId: existing.id, revokedAt: null },
           data: { revokedAt: new Date() },

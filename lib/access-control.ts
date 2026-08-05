@@ -58,7 +58,7 @@ export async function getViewerAccessContext(
   viewer: DemoViewer,
 ): Promise<ViewerAccessContext> {
   let access = await findMembership(viewer);
-  if (!access) {
+  if (!access && viewer.mode === "demo") {
     await ensureDemoSchoolData(viewer);
     access = await findMembership(viewer);
   }

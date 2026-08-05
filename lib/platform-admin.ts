@@ -88,7 +88,7 @@ export async function getPlatformSnapshot(
       orderBy: { createdAt: "desc" },
       include: {
         memberships: {
-          where: { role: "COORDINATOR", status: "ACTIVE" },
+          where: { role: "COORDINATOR" },
           include: { user: true },
           orderBy: { createdAt: "asc" },
         },

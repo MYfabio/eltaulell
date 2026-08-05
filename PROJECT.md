@@ -90,6 +90,11 @@ Validat en local el 5 d'agost de 2026:
 - Sessions de centre persistents i revocables, vinculades a l'usuari i a una
   matrícula activa. Els canvis de rol s'apliquen a la petició següent i una
   suspensió revoca totes les sessions d'aquella matrícula.
+- Accés real de pilot per correu i contrasenya, amb invitacions d'un sol ús,
+  hash `scrypt`, bloqueig temporal per intents fallits i entrada directa segons
+  el rol. Els perfils de demostració queden limitats a l'entorn local.
+- Alta de centres i persones amb activació pendent: coordinació copia l'enllaç
+  segur i la persona activa el compte abans de poder iniciar sessió.
 
 Pendent d'implementació real:
 

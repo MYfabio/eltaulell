@@ -4,12 +4,12 @@ import { getActorId, getSchoolForAdmin } from "@/lib/admin";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS, type AppRole } from "@/lib/permissions";
 import { db } from "@/lib/db";
+import { issueAccountInvitation } from "@/lib/account-auth";
 
 const createPersonSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().email().max(160).transform((value) => value.toLowerCase()),
   role: z.enum(["COORDINATOR", "TUTOR", "DELEGATE", "STUDENT"]),
-  status: z.enum(["INVITED", "ACTIVE"]).default("ACTIVE"),
   groupId: z.string().trim().min(1).nullable().optional(),
 });
 
@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
   }
 
   const school = await getSchoolForAdmin(viewer);
-  const { name, email, role, status } = parsed.data;
+  const { name, email, role } = parsed.data;
+  const status = "INVITED" as const;
   const groupId = role === "COORDINATOR" ? null : parsed.data.groupId || null;
   const groupRole = GROUP_ROLE[role];
 
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const actorId = await getActorId(viewer);
-    const membership = await db.$transaction(async (transaction) => {
+    const result = await db.$transaction(async (transaction) => {
       const user = await transaction.user.upsert({
         where: { email },
         update: { name },
@@ -83,10 +84,22 @@ export async function POST(request: NextRequest) {
           metadata: { email, role, status, groupId },
         },
       });
-      return created;
+      const invitation = await issueAccountInvitation(transaction, {
+        schoolId: school.id,
+        email,
+        role,
+      });
+      return { membership: created, invitation };
     });
 
-    return NextResponse.json({ membershipId: membership.id }, { status: 201 });
+    return NextResponse.json(
+      {
+        membershipId: result.membership.id,
+        activationPath: `/activar?token=${encodeURIComponent(result.invitation.token)}`,
+        expiresAt: result.invitation.expiresAt.toISOString(),
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "ALREADY_MEMBER") {
       return NextResponse.json({ error: "Aquesta persona ja forma part del centre." }, { status: 409 });

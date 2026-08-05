@@ -1,7 +1,6 @@
 import "server-only";
 
 import { timingSafeEqual } from "node:crypto";
-import { ensureDemoSchoolData } from "@/lib/admin";
 import { db } from "@/lib/db";
 import type { DemoViewer } from "@/lib/demo-auth";
 import { passwordMatches } from "@/lib/credential-policy";
@@ -67,18 +66,23 @@ function viewerFor(config: CentreAdminConfig): DemoViewer {
     schoolSlug: config.schoolSlug,
     groupName: "Tots els grups",
     permissions: permissionsForRole("COORDINATOR"),
+    mode: "account",
   };
 }
 
 export async function ensureCentreAdmin(config: CentreAdminConfig) {
   const viewer = viewerFor(config);
-  const school = await ensureDemoSchoolData(viewer);
-  await db.school.update({
-    where: { id: school.id },
-    data: {
+  const school = await db.school.upsert({
+    where: { slug: config.schoolSlug },
+    update: {
       name: config.schoolName,
       active: true,
       ...(config.emailDomain ? { emailDomain: config.emailDomain } : {}),
+    },
+    create: {
+      name: config.schoolName,
+      slug: config.schoolSlug,
+      emailDomain: config.emailDomain,
     },
   });
 
