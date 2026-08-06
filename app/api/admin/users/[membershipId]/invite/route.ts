@@ -4,9 +4,10 @@ import { getActorId, getSchoolForAdmin } from "@/lib/admin";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { db } from "@/lib/db";
 import { can, PERMISSIONS } from "@/lib/permissions";
+import { sendInvitationEmail } from "@/lib/email";
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ membershipId: string }> },
 ) {
   const viewer = await getDemoViewer();
@@ -53,8 +54,15 @@ export async function POST(
     return invitation;
   });
 
+  const activationPath = `/activar?token=${encodeURIComponent(result.token)}`;
+  await sendInvitationEmail({
+    to: membership.user.email,
+    schoolName: school.name,
+    activationUrl: new URL(activationPath, process.env.APP_BASE_URL || request.nextUrl.origin).toString(),
+    userId: membership.userId,
+  });
   return NextResponse.json({
-    activationPath: `/activar?token=${encodeURIComponent(result.token)}`,
+    activationPath,
     expiresAt: result.expiresAt.toISOString(),
   });
 }

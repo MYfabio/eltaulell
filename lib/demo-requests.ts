@@ -155,6 +155,9 @@ export async function issueDemoRequestInvitation(requestId: string) {
     return {
       activationPath: `/activar?token=${encodeURIComponent(invitation.token)}`,
       expiresAt: invitation.expiresAt.toISOString(),
+      recipient: request.email,
+      schoolName: school.name,
+      userId: user.id as string,
     } as const;
   });
 }

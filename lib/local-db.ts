@@ -45,6 +45,7 @@ export interface DatabaseClient {
   };
   integrationSyncJob: { create: DbMethod; update: DbMethod };
   externalCourse: { findMany: DbMethod; upsert: DbMethod };
+  externalResource: { findMany: DbMethod; upsert: DbMethod };
   oauthAccount: { findFirst: DbMethod; upsert: DbMethod };
   calendarEvent: {
     create: DbMethod;
@@ -52,6 +53,13 @@ export interface DatabaseClient {
     findFirst: DbMethod;
     findMany: DbMethod;
     update: DbMethod;
+  };
+  emailDelivery: { create: DbMethod; update: DbMethod };
+  passwordResetToken: {
+    create: DbMethod;
+    findUnique: DbMethod;
+    update: DbMethod;
+    updateMany: DbMethod;
   };
   board: { findMany: DbMethod; upsert: DbMethod };
   postIt: {
@@ -157,8 +165,11 @@ type LocalState = {
   integrationConnections: Row[];
   syncJobs: Row[];
   externalCourses: Row[];
+  externalResources: Row[];
   oauthAccounts: Row[];
   calendarEvents: Row[];
+  emailDeliveries: Row[];
+  passwordResetTokens: Row[];
 };
 
 function makeState(): LocalState {
@@ -189,8 +200,11 @@ function makeState(): LocalState {
     integrationConnections: [],
     syncJobs: [],
     externalCourses: [],
+    externalResources: [],
     oauthAccounts: [],
     calendarEvents: [],
+    emailDeliveries: [],
+    passwordResetTokens: [],
   };
 }
 
@@ -910,6 +924,32 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
+    externalResource: {
+      async upsert({ where, create, update }: Row) {
+        const key = where.provider_externalId;
+        const existing = state.externalResources.find(
+          (resource) => resource.provider === key.provider && resource.externalId === key.externalId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const resource = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...create };
+        state.externalResources.push(resource);
+        persistState();
+        return resource;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.externalResources.filter((resource) => {
+          if (where.schoolId && resource.schoolId !== where.schoolId) return false;
+          if (where.groupId && resource.groupId !== where.groupId) return false;
+          if (where.provider && resource.provider !== where.provider) return false;
+          return true;
+        });
+      },
+    },
+
     oauthAccount: {
       async findFirst({ where }: Row) {
         return state.oauthAccounts.find((account) => {
@@ -980,6 +1020,65 @@ export function createLocalDb(): DatabaseClient {
         });
         persistState();
         return { count: before - state.calendarEvents.length };
+      },
+    },
+
+    emailDelivery: {
+      async create({ data }: Row) {
+        const delivery = {
+          id: randomUUID(),
+          status: "PENDING",
+          providerId: null,
+          errorMessage: null,
+          sentAt: null,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.emailDeliveries.push(delivery);
+        persistState();
+        return delivery;
+      },
+      async update({ where, data }: Row) {
+        const delivery = state.emailDeliveries.find((item) => item.id === where.id);
+        if (!delivery) throw new Error("Email delivery not found");
+        Object.assign(delivery, data, { updatedAt: now() });
+        persistState();
+        return delivery;
+      },
+    },
+
+    passwordResetToken: {
+      async create({ data }: Row) {
+        const token = { id: randomUUID(), usedAt: null, createdAt: now(), ...data };
+        state.passwordResetTokens.push(token);
+        persistState();
+        return token;
+      },
+      async findUnique({ where, include }: Row) {
+        const token = state.passwordResetTokens.find((item) =>
+          where.id ? item.id === where.id : item.tokenHash === where.tokenHash,
+        );
+        if (!token) return null;
+        const user = state.users.find((item) => item.id === token.userId);
+        return include?.user ? { ...token, user } : token;
+      },
+      async update({ where, data }: Row) {
+        const token = state.passwordResetTokens.find((item) => item.id === where.id);
+        if (!token) throw new Error("Password reset token not found");
+        Object.assign(token, data);
+        persistState();
+        return token;
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.passwordResetTokens.filter((item) => {
+          if (where.userId && item.userId !== where.userId) return false;
+          if (where.usedAt === null && item.usedAt !== null) return false;
+          return true;
+        });
+        matches.forEach((item) => Object.assign(item, data));
+        persistState();
+        return { count: matches.length };
       },
     },
 
@@ -1310,21 +1409,36 @@ export function createLocalDb(): DatabaseClient {
         persistState();
         return assignment;
       },
-      async findMany({ where }: Row) {
+      async findMany({ where = {}, include, select }: Row) {
         return state.groupMemberships
-          .filter((membership) => membership.schoolMembershipId === where.schoolMembershipId)
+          .filter((membership) => {
+            if (where.schoolMembershipId && membership.schoolMembershipId !== where.schoolMembershipId) return false;
+            if (where.groupId && membership.groupId !== where.groupId) return false;
+            if (where.role && membership.role !== where.role) return false;
+            return true;
+          })
           .map((membership) => {
             const group = groupById(membership.groupId)!;
+            const schoolMembership = state.memberships.find(
+              (item) => item.id === membership.schoolMembershipId,
+            );
+            if (select?.group) {
+              return {
+                group: {
+                  id: group.id,
+                  name: group.name,
+                  schoolId: group.schoolId,
+                  board: boardByGroupId(group.id),
+                },
+              };
+            }
             return {
-              group: {
-                id: group.id,
-                name: group.name,
-                schoolId: group.schoolId,
-                board: boardByGroupId(group.id),
-              },
+              ...membership,
+              ...(include?.group ? { group } : {}),
+              ...(include?.schoolMembership ? { schoolMembership } : {}),
             };
           })
-          .sort((a, b) => a.group.name.localeCompare(b.group.name));
+          .sort((a, b) => (a.group?.name || "").localeCompare(b.group?.name || ""));
       },
       async deleteMany({ where }: Row) {
         const before = state.groupMemberships.length;

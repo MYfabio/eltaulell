@@ -17,6 +17,7 @@ export default async function AccessPage({
     error?: string | string[];
     accountError?: string | string[];
     platformError?: string | string[];
+    reset?: string | string[];
   }>;
 }) {
   const currentViewer = await getDemoViewer();
@@ -33,6 +34,7 @@ export default async function AccessPage({
   const platformError = Array.isArray(params.platformError)
     ? params.platformError[0]
     : params.platformError;
+  const passwordReset = Array.isArray(params.reset) ? params.reset[0] : params.reset;
 
   return (
     <main className="access-page">
@@ -92,6 +94,9 @@ export default async function AccessPage({
           </p>
         </div>
         <form action="/api/auth/account" method="post">
+          {passwordReset === "success" && (
+            <p className="current-session" role="status">Contrasenya actualitzada. Ja pots iniciar sessió.</p>
+          )}
           <label>
             Correu electrònic
             <input autoComplete="username" name="email" required type="email" />
@@ -127,6 +132,7 @@ export default async function AccessPage({
             </p>
           )}
           <button type="submit">Entrar</button>
+          <Link href="/recuperar-contrasenya">He oblidat la contrasenya</Link>
         </form>
       </section>
 

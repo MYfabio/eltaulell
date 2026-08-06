@@ -1,0 +1,6 @@
+import Link from "next/link";
+
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string; error?: string }> }) {
+  const params = await searchParams;
+  return <main className="access-page"><header className="access-header"><Link className="portal-brand" href="/"><span>T</span><strong>El Taulell</strong></Link></header><section className="access-hero"><p>CONTRASENYA NOVA</p><h1>Protegeix el teu compte.</h1><span>Utilitza com a mínim 12 caràcters, amb lletres i números.</span></section><section className="account-access-card"><div><h2>Canvia la contrasenya</h2>{params.error && <p role="alert">{params.error === "expired" ? "L'enllaç ha caducat o ja s'ha utilitzat." : "Les contrasenyes han de coincidir i complir els requisits."}</p>}</div><form action="/api/auth/password-reset/confirm" method="post"><input name="token" type="hidden" value={params.token || ""} /><label>Contrasenya nova<input autoComplete="new-password" minLength={12} name="password" required type="password" /></label><label>Repeteix-la<input autoComplete="new-password" minLength={12} name="confirmation" required type="password" /></label><button disabled={!params.token} type="submit">Desar contrasenya</button><Link href="/recuperar-contrasenya">Demanar un altre enllaç</Link></form></section></main>;
+}

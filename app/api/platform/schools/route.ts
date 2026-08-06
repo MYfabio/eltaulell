@@ -4,6 +4,7 @@ import { getPlatformViewer } from "@/lib/platform-auth";
 import { db } from "@/lib/db";
 import { getPlatformAdminId } from "@/lib/platform-admin";
 import { issueAccountInvitation } from "@/lib/account-auth";
+import { sendInvitationEmail } from "@/lib/email";
 
 const optionalDomain = z.string().trim().max(120).transform((value) => value || null);
 
@@ -80,12 +81,19 @@ export async function POST(request: NextRequest) {
           },
         },
       });
-      return { school: created, invitation };
+      return { school: created, invitation, coordinatorId: coordinator.id as string };
+    });
+    const activationPath = `/activar?token=${encodeURIComponent(result.invitation.token)}`;
+    await sendInvitationEmail({
+      to: data.coordinatorEmail,
+      schoolName: result.school.name,
+      activationUrl: new URL(activationPath, process.env.APP_BASE_URL || request.nextUrl.origin).toString(),
+      userId: result.coordinatorId,
     });
     return NextResponse.json(
       {
         schoolId: result.school.id,
-        activationPath: `/activar?token=${encodeURIComponent(result.invitation.token)}`,
+        activationPath,
         expiresAt: result.invitation.expiresAt.toISOString(),
       },
       { status: 201 },

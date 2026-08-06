@@ -5,6 +5,7 @@ import { getDemoViewer } from "@/lib/demo-auth";
 import { can, PERMISSIONS, type AppRole } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { issueAccountInvitation } from "@/lib/account-auth";
+import { sendInvitationEmail } from "@/lib/email";
 
 const createPersonSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -92,10 +93,17 @@ export async function POST(request: NextRequest) {
       return { membership: created, invitation };
     });
 
+    const activationPath = `/activar?token=${encodeURIComponent(result.invitation.token)}`;
+    await sendInvitationEmail({
+      to: email,
+      schoolName: school.name,
+      activationUrl: new URL(activationPath, process.env.APP_BASE_URL || request.nextUrl.origin).toString(),
+      userId: result.membership.userId,
+    });
     return NextResponse.json(
       {
         membershipId: result.membership.id,
-        activationPath: `/activar?token=${encodeURIComponent(result.invitation.token)}`,
+        activationPath,
         expiresAt: result.invitation.expiresAt.toISOString(),
       },
       { status: 201 },
