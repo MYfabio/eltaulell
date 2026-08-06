@@ -1,12 +1,12 @@
 import Link from "next/link";
 import PlatformAdministrationClient from "@/app/administracio-plataforma/platform-administration-client";
-import { requirePlatformDemoViewer } from "@/lib/demo-auth";
+import { requirePlatformViewer } from "@/lib/platform-auth";
 import { getPlatformSnapshot } from "@/lib/platform-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlatformAdministrationPage() {
-  const viewer = await requirePlatformDemoViewer();
+  const viewer = await requirePlatformViewer();
   const snapshot = await getPlatformSnapshot(viewer);
   const activeSchools = snapshot.schools.filter((school) => school.active).length;
   const totalUsers = snapshot.schools.reduce((total, school) => total + school.userCount, 0);
@@ -37,7 +37,7 @@ export default async function PlatformAdministrationPage() {
 
       <section className="platform-heading">
         <div>
-          <p>CONTROL MULTI-CENTRE · MODE LOCAL</p>
+          <p>CONTROL MULTI-CENTRE · ACCÉS PROTEGIT</p>
           <h1>Centres educatius</h1>
           <span>
             Dona d'alta centres, assigna la coordinació inicial i controla l'estat,

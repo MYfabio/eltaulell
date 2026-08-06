@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getPlatformDemoViewer } from "@/lib/demo-auth";
+import { getPlatformViewer } from "@/lib/platform-auth";
 import { db } from "@/lib/db";
 import { getPlatformAdminId } from "@/lib/platform-admin";
 
@@ -15,7 +15,7 @@ const updateSchoolSchema = z.object({
 }).refine((value) => Object.keys(value).some((key) => key !== "schoolId"));
 
 export async function PATCH(request: NextRequest) {
-  const viewer = await getPlatformDemoViewer();
+  const viewer = await getPlatformViewer();
   if (!viewer) {
     return NextResponse.json({ error: "Cal iniciar sessió com a administració de plataforma." }, { status: 401 });
   }

@@ -9,7 +9,7 @@ type DbMethod = (args: any) => Promise<any>;
 export interface DatabaseClient {
   $transaction<T>(operation: (transaction: DatabaseClient) => Promise<T>): Promise<T>;
   auditLog: { create: DbMethod };
-  platformAdmin: { upsert: DbMethod };
+  platformAdmin: { findFirst: DbMethod; upsert: DbMethod };
   platformAuditLog: { create: DbMethod; findMany: DbMethod };
   demoRequest: {
     create: DbMethod;
@@ -391,9 +391,20 @@ export function createLocalDb(): DatabaseClient {
     },
 
     platformAdmin: {
-      async upsert({ where, create }: Row) {
+      async findFirst({ where }: Row) {
+        return state.platformAdmins.find((admin) => {
+          if (where.userId && admin.userId !== where.userId) return false;
+          if (typeof where.active === "boolean" && admin.active !== where.active) return false;
+          return true;
+        }) ?? null;
+      },
+      async upsert({ where, create, update }: Row) {
         const existing = state.platformAdmins.find((admin) => admin.userId === where.userId);
-        if (existing) return existing;
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
         const admin = {
           id: randomUUID(),
           active: true,
@@ -402,6 +413,7 @@ export function createLocalDb(): DatabaseClient {
           ...create,
         };
         state.platformAdmins.push(admin);
+        persistState();
         return admin;
       },
     },
