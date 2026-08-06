@@ -1,81 +1,100 @@
 # El Taulell
 
-Aplicació educativa multi-centre que reuneix el tauler de classe, les consultes,
-el calendari i els accessos a les eines educatives en un únic espai.
+Aplicació educativa multi-centre que concentra el taulell de classe, les tasques,
+les consultes anònimes, el calendari i els accessos a les eines educatives en un
+únic espai.
 
-## Estat actual
+## Funcions principals
 
-El projecte inclou una base multi-centre amb quatre perfils —coordinació,
-tutoria, delegació i alumnat—, permisos per rol, gestió de persones i grups,
-enquestes moderades i fitxers del tauler. El pilot ja disposa d'accés real amb
-invitació, contrasenya xifrada, sessió persistent i entrada directa segons el
-perfil. L'autenticació institucional amb Google Workspace i les connexions amb
-Classroom i Moodle encara formen part del full de ruta.
+- Dades reals de tasques, qualificacions, progrés i ús agregat de la Tutoria IA a
+  PostgreSQL, sempre vinculades al centre, grup i alumne autenticats.
+- Perfils de SuperAdmin, coordinació, tutoria, delegació i alumnat amb permisos i
+  aïllament estricte entre centres.
+- SuperAdmin protegit amb contrasenya xifrada, TOTP, bloqueig d'intents, sessions
+  revocables i llista opcional d'IP autoritzades.
+- OAuth 2.0 de Google i serveis per sincronitzar Classroom i Google Calendar.
+- Tutor IA socràtic amb límit diari, detecció de risc i estadístiques anònimes;
+  no conserva els prompts ni les respostes de l'alumnat.
+- Consultes anònimes amb resposta, derivació i tancament sense desar la identitat
+  de l'alumne al tiquet.
+- Calendari amb creació, edició i eliminació d'esdeveniments.
+- Connectors configurables per a Moodle i iEduca, amb cursos, recursos i
+  activitats estructurats.
+- Invitacions, recuperació de contrasenya i avisos mitjançant un proveïdor de
+  correu transaccional HTTP.
+- Privacitat, termes RGPD, conservació i esborrat de dades, còpies xifrades,
+  registre d'errors i monitorització.
 
-Tutoria i coordinació també poden crear invitacions temporals per grup amb un
-enllaç i un codi separat, limitar-ne els usos i revocar-les. La importació de
-l'alumnat des de Classroom es mostra com a flux preparat, però no llegeix dades
-reals fins que el centre completi l'autorització OAuth de Google.
+## Posada en marxa local
 
-La vista local inclou una administració general separada dels rols de centre.
-Permet donar d'alta centres amb la seva coordinació inicial, definir plans i
-límits, suspendre o reactivar l'accés i consultar una auditoria global. Aquest
-accés de demostració no s'exposa en producció sense activar-lo explícitament.
-En donar d'alta un centre o una persona es genera un enllaç d'activació d'un sol
-ús. La persona crea la seva contrasenya i el compte només passa a actiu després
-de completar aquest pas.
+1. Copia `.env.example` a `.env` i configura `DATABASE_URL`, `AUTH_SECRET` i
+   `DATA_ENCRYPTION_KEY`.
+2. Executa `npm install`.
+3. Executa `npm run db:generate` i `npm run db:migrate`.
+4. Executa `npm run dev` i obre <http://127.0.0.1:3000/acces>.
 
-La demostració pública es pot activar amb `DEMO_ACCESS_ENABLED=1`. L'accés real
-continua a `/acces` i mostra un enllaç separat cap a `/demo`. La visita pública
-entra només al taulell d'alumne; la resta de rols s'expliquen sense exposar-ne
-l'accés. El formulari de contacte desa les sol·licituds a PostgreSQL i la persona
-administradora configurada les gestiona des de `/coordinacio/sollicituds-demo`,
-on pot generar un enllaç d'activació individual i d'un sol ús.
-
-Consulta [PROJECT.md](./PROJECT.md) per entendre l'abast i les decisions del
-projecte, i [ROADMAP.md](./ROADMAP.md) per veure què està fet i què falta.
-
-## Vista local ràpida
-
-La manera recomanada de revisar canvis abans de publicar-los és:
+Per revisar la interfície sense PostgreSQL ni serveis externs:
 
 ```powershell
 npm.cmd run local
 ```
 
-Després, obre <http://127.0.0.1:3000/acces>.
+La vista local utilitza dades temporals, no modifica producció i les elimina en
+reiniciar el servidor. La demostració pública s'activa de manera separada amb
+`DEMO_ACCESS_ENABLED=1`.
 
-Des de la pantalla d'accés pots entrar a **Administració general** i revisar el
-panell de centres a <http://127.0.0.1:3000/administracio-plataforma>.
+## Configuració de producció
 
-Aquesta vista crea dades de demostració en memòria. No necessita PostgreSQL, no
-modifica Railway i totes les dades locals desapareixen quan es reinicia el
-servidor.
+Railway ha de disposar d'un servei PostgreSQL i d'un Bucket privat compatible
+amb S3. Totes les variables necessàries estan documentades a `.env.example`:
 
-## Desenvolupament amb PostgreSQL
+- identitat, URL pública i dades legals;
+- compte SuperAdmin i secret TOTP;
+- xifrat de tokens i de còpies de seguretat;
+- Google OAuth, Classroom i Calendar;
+- OpenAI per a la Tutoria IA;
+- Moodle i iEduca;
+- correu transaccional;
+- treballs programats i observabilitat.
 
-1. Copia `.env.example` a `.env` i configura `DATABASE_URL`.
-2. Executa `npm install`.
-3. Executa `npm run db:generate` i `npm run db:migrate`.
-4. Executa `npm run dev`.
+Les contrasenyes, tokens i claus reals no s'han de guardar mai al repositori. A
+cada desplegament s'han d'aplicar les migracions abans d'arrencar l'aplicació:
 
-L'endpoint `GET /api/health` permet verificar el desplegament.
+```powershell
+npm.cmd run db:deploy
+npm.cmd run start
+```
 
-Els post-its, les enquestes, els vots i les metadades dels fitxers es desen a PostgreSQL. En
-producció, el contingut dels fitxers es desa en un Railway Bucket privat i es
-serveix des de l'API després de validar l'accés al grup. Els fitxers admesos
-tenen un límit de 5 MB i cada tauler pot conservar fins a 30 fitxers en aquesta
-fase pilot.
+## Operació i manteniment
 
-## Railway
+- `GET /api/health`: estat del servei i de PostgreSQL.
+- `POST /api/ops/retention`: aplica la política de conservació i esborrat.
+- `POST /api/ops/backup`: crea una còpia xifrada per centre al Bucket privat.
 
-1. Crea un projecte i afegeix un servei PostgreSQL i un Railway Bucket.
-2. Connecta aquest repositori.
-3. Railway injecta `DATABASE_URL`; afegeix també `AUTH_SECRET` i connecta les
-   variables del Bucket (`BUCKET`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`,
-   `REGION` i `ENDPOINT`) al servei web.
-4. Railway executa `npm run db:deploy` abans de cada publicació per aplicar les
-   migracions pendents.
+Els dos treballs operatius requereixen `Authorization: Bearer <CRON_SECRET>` i
+s'han de programar des de Railway. Els errors sensibles es redacten abans de
+desar-los i, si es configura `OTEL_EXPORTER_OTLP_ENDPOINT`, també s'exporten al
+sistema de monitorització.
 
-Cap canvi es publica directament: primer es revisa en local, després es prepara
-una pull request i només s'incorpora a producció quan ha estat validat.
+## Proves
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run test:e2e
+```
+
+`test:e2e` aixeca una vista local i comprova l'accés, el taulell, la privacitat,
+la protecció de la Tutoria IA, el calendari, el rendiment bàsic i el bloqueig de
+peticions d'un altre origen. També pot provar un servidor ja iniciat definint
+`E2E_BASE_URL`.
+
+La suite unitària cobreix permisos, sessions, xifrat, TOTP, accessibilitat,
+seguretat de la IA i separació de dades entre centres.
+
+## Serveis externs
+
+El codi queda preparat encara que les credencials no estiguin configurades. Per
+activar cada integració cal proporcionar les claus de l'organització a Railway.
+En particular, les rutes d'iEduca són configurables perquè depenen del contracte
+d'API habilitat per cada proveïdor o centre.

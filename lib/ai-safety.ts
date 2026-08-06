@@ -10,6 +10,7 @@ function normalizedText(value: string) {
 const URGENT_PATTERNS = [
   /\b(suicid|suicidar|matar-?me|matarme|treure'm la vida|quitarme la vida)\b/,
   /\b(autolesi|fer-?me mal|hacerme dano|cortar-?me|cortarme)\b/,
+  /\b(em vull fer mal|quiero hacerme dano|fer mal ara)\b/,
   /\b(abus sexual|agressio sexual|violacio|violacion)\b/,
   /\b(em peguen|me pegan|em maltracten|me maltratan|maltractament)\b/,
   /\b(perill immediat|peligro inmediato|arma|ganivet|cuchillo)\b/,

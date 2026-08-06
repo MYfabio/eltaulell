@@ -4,6 +4,7 @@ import { classifyAiRisk, socraticInstructions } from "../lib/ai-safety.ts";
 
 test("the safety filter escalates immediate self-harm and abuse signals", () => {
   assert.equal(classifyAiRisk("Em vull suïcidar"), "URGENT");
+  assert.equal(classifyAiRisk("Em vull fer mal ara mateix"), "URGENT");
   assert.equal(classifyAiRisk("Me pegan en casa"), "URGENT");
 });
 

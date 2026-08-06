@@ -604,7 +604,7 @@ export default function BoardClient({
   }
 
   return (
-    <main className={`dashboard theme-${boardTheme}`}>
+    <main className={`dashboard theme-${boardTheme}`} data-group-id={selectedBoard.groupId}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">T</div>
@@ -649,7 +649,7 @@ export default function BoardClient({
 
       <section className="welcome">
         <div>
-          <p className="eyebrow">DILLUNS, 28 DE JULIOL</p>
+          <p className="eyebrow">{new Intl.DateTimeFormat("ca-ES", { weekday: "long", day: "numeric", month: "long" }).format(new Date()).toUpperCase()}</p>
           <h1>
             Bon dia, {viewer.firstName}! <span>👋</span>
           </h1>
@@ -658,15 +658,12 @@ export default function BoardClient({
 
         <div className="today-card">
           <div className="date-block">
-            <strong>28</strong>
-            <span>JUL.</span>
+            <strong>{new Intl.DateTimeFormat("ca-ES", { day: "2-digit" }).format(new Date())}</strong>
+            <span>{new Intl.DateTimeFormat("ca-ES", { month: "short" }).format(new Date()).toUpperCase()}</span>
           </div>
           <div>
             <strong>Avui</strong>
-            <span>2 tasques · 1 activitat</span>
-          </div>
-          <div className="weather">
-            ☀️ <strong>27°</strong>
+            <span>{learningTasks.filter((task) => task.status === "PENDING" || task.status === "IN_PROGRESS").length} tasques · {initialCalendarEvents.length} elements d'agenda</span>
           </div>
         </div>
       </section>
