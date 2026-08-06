@@ -1,14 +1,15 @@
 import PortalShell from "@/app/components/portal-shell";
 import { requireDemoPermission } from "@/lib/demo-auth";
 import { PERMISSIONS } from "@/lib/permissions";
+import IntegrationsClient from "@/app/integracions/integrations-client";
+import { getGoogleIntegrationState } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
 export default async function IntegrationsPage() {
   const viewer = await requireDemoPermission(PERMISSIONS.MANAGE_INTEGRATIONS);
-  const googleConfigured = Boolean(
-    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
-  );
+  const google = await getGoogleIntegrationState(viewer);
+  const googleConnected = google.classroom?.status === "CONNECTED";
 
   return (
     <PortalShell
@@ -26,18 +27,14 @@ export default async function IntegrationsPage() {
             Importarà cursos, tasques, materials i dates quan l’administrador
             del domini autoritzi l’aplicació a Google Cloud i Workspace.
           </p>
-          <div className="action-list">
-            <button disabled={!googleConfigured} type="button">
-              {googleConfigured ? "Iniciar autorització de Google" : "Pendent de credencials de Google Cloud"}
-            </button>
-          </div>
+          <IntegrationsClient configured={google.configured} connected={googleConnected} />
         </article>
 
         <article className="portal-panel">
           <p className="panel-label">ESTAT</p>
           <h2>Classroom</h2>
-          <span className={googleConfigured ? "status-pill pending" : "status-pill offline"}>
-            {googleConfigured ? "Preparat per autoritzar" : "No connectat"}
+          <span className={googleConnected ? "status-pill connected" : google.configured ? "status-pill pending" : "status-pill offline"}>
+            {googleConnected ? "Connectat" : google.configured ? "Preparat per autoritzar" : "No connectat"}
           </span>
           <p>La connexió es farà per centre i amb els permisos mínims necessaris.</p>
         </article>

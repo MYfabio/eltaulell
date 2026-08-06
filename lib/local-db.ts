@@ -31,6 +31,21 @@ export interface DatabaseClient {
     deleteMany: DbMethod;
     findMany: DbMethod;
   };
+  integrationConnection: {
+    findFirst: DbMethod;
+    update: DbMethod;
+    upsert: DbMethod;
+  };
+  integrationSyncJob: { create: DbMethod; update: DbMethod };
+  externalCourse: { findMany: DbMethod; upsert: DbMethod };
+  oauthAccount: { findFirst: DbMethod; upsert: DbMethod };
+  calendarEvent: {
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    update: DbMethod;
+  };
   board: { findMany: DbMethod; upsert: DbMethod };
   postIt: {
     create: DbMethod;
@@ -130,6 +145,11 @@ type LocalState = {
   votes: Row[];
   learningTasks: Row[];
   aiUsageEvents: Row[];
+  integrationConnections: Row[];
+  syncJobs: Row[];
+  externalCourses: Row[];
+  oauthAccounts: Row[];
+  calendarEvents: Row[];
 };
 
 function makeState(): LocalState {
@@ -155,6 +175,11 @@ function makeState(): LocalState {
     votes: [],
     learningTasks: [],
     aiUsageEvents: [],
+    integrationConnections: [],
+    syncJobs: [],
+    externalCourses: [],
+    oauthAccounts: [],
+    calendarEvents: [],
   };
 }
 
@@ -711,6 +736,167 @@ export function createLocalDb(): DatabaseClient {
         );
         persistState();
         return { count: before - state.aiUsageEvents.length };
+      },
+    },
+
+    integrationConnection: {
+      async findFirst({ where }: Row) {
+        return state.integrationConnections.find((connection) => {
+          if (where.id && connection.id !== where.id) return false;
+          if (where.schoolId && connection.schoolId !== where.schoolId) return false;
+          if (where.provider && connection.provider !== where.provider) return false;
+          if (where.status && connection.status !== where.status) return false;
+          return true;
+        }) ?? null;
+      },
+      async upsert({ where, create, update }: Row) {
+        const key = where.schoolId_provider;
+        const existing = state.integrationConnections.find(
+          (connection) => connection.schoolId === key.schoolId && connection.provider === key.provider,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const connection = {
+          id: randomUUID(),
+          status: "DISCONNECTED",
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.integrationConnections.push(connection);
+        persistState();
+        return connection;
+      },
+      async update({ where, data }: Row) {
+        const connection = state.integrationConnections.find((item) => item.id === where.id);
+        if (!connection) throw new Error("Integration connection not found");
+        Object.assign(connection, data, { updatedAt: now() });
+        persistState();
+        return connection;
+      },
+    },
+
+    integrationSyncJob: {
+      async create({ data }: Row) {
+        const job = {
+          id: randomUUID(),
+          status: "PENDING",
+          processedCount: 0,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.syncJobs.push(job);
+        persistState();
+        return job;
+      },
+      async update({ where, data }: Row) {
+        const job = state.syncJobs.find((item) => item.id === where.id);
+        if (!job) throw new Error("Sync job not found");
+        Object.assign(job, data, { updatedAt: now() });
+        persistState();
+        return job;
+      },
+    },
+
+    externalCourse: {
+      async upsert({ where, create, update }: Row) {
+        const key = where.provider_externalId;
+        const existing = state.externalCourses.find(
+          (course) => course.provider === key.provider && course.externalId === key.externalId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const course = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...create };
+        state.externalCourses.push(course);
+        persistState();
+        return course;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.externalCourses.filter((course) => {
+          if (where.groupId && course.groupId !== where.groupId) return false;
+          if (where.provider && course.provider !== where.provider) return false;
+          return true;
+        });
+      },
+    },
+
+    oauthAccount: {
+      async findFirst({ where }: Row) {
+        return state.oauthAccounts.find((account) => {
+          if (where.userId && account.userId !== where.userId) return false;
+          if (where.provider && account.provider !== where.provider) return false;
+          return true;
+        }) ?? null;
+      },
+      async upsert({ where, create, update }: Row) {
+        const key = where.provider_providerAccountId;
+        const existing = state.oauthAccounts.find(
+          (account) => account.provider === key.provider && account.providerAccountId === key.providerAccountId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const account = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...create };
+        state.oauthAccounts.push(account);
+        persistState();
+        return account;
+      },
+    },
+
+    calendarEvent: {
+      async findFirst({ where }: Row) {
+        return state.calendarEvents.find((event) => {
+          if (where.id && event.id !== where.id) return false;
+          if (where.schoolId && event.schoolId !== where.schoolId) return false;
+          if (where.provider && event.provider !== where.provider) return false;
+          if (where.externalId && event.externalId !== where.externalId) return false;
+          return true;
+        }) ?? null;
+      },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const events = state.calendarEvents.filter((event) => {
+          if (where.schoolId && event.schoolId !== where.schoolId) return false;
+          if (where.groupId && event.groupId !== where.groupId) return false;
+          if (where.provider === null && event.provider != null) return false;
+          if (typeof where.provider === "string" && event.provider !== where.provider) return false;
+          if (where.startsAt?.gte && event.startsAt < where.startsAt.gte) return false;
+          if (where.startsAt?.lte && event.startsAt > where.startsAt.lte) return false;
+          return true;
+        });
+        if (orderBy?.startsAt === "asc") events.sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime());
+        return events;
+      },
+      async create({ data }: Row) {
+        const event = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...data };
+        state.calendarEvents.push(event);
+        persistState();
+        return event;
+      },
+      async update({ where, data }: Row) {
+        const event = state.calendarEvents.find((item) => item.id === where.id);
+        if (!event) throw new Error("Calendar event not found");
+        Object.assign(event, data, { updatedAt: now() });
+        persistState();
+        return event;
+      },
+      async deleteMany({ where }: Row) {
+        const before = state.calendarEvents.length;
+        state.calendarEvents = state.calendarEvents.filter((event) => {
+          if (where.id && event.id !== where.id) return true;
+          if (where.schoolId && event.schoolId !== where.schoolId) return true;
+          return false;
+        });
+        persistState();
+        return { count: before - state.calendarEvents.length };
       },
     },
 

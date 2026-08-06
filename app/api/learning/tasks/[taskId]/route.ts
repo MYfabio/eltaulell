@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AccessControlError } from "@/lib/access-control";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { updateOwnLearningTaskStatus } from "@/lib/learning";
+import { updateGoogleSubmission } from "@/lib/google";
 
 const statusSchema = z.object({
   status: z.enum(["IN_PROGRESS", "DELIVERED"]),
@@ -34,7 +35,23 @@ export async function PATCH(
   const { taskId } = await params;
   try {
     const task = await updateOwnLearningTaskStatus(viewer, taskId, parsed.data.status);
-    return NextResponse.json({ task });
+    let classroom = { synchronized: false, error: null as string | null };
+    try {
+      classroom = {
+        ...(await updateGoogleSubmission(
+          viewer,
+          { id: taskId },
+          parsed.data.status === "DELIVERED" ? "turnIn" : "reclaim",
+        )),
+        error: null,
+      };
+    } catch (error) {
+      classroom = {
+        synchronized: false,
+        error: error instanceof Error ? error.message : "GOOGLE_SYNC_FAILED",
+      };
+    }
+    return NextResponse.json({ task, classroom });
   } catch (error) {
     if (error instanceof AccessControlError) {
       return NextResponse.json({ error: "No tens accés a aquesta tasca." }, { status: error.status });
