@@ -281,6 +281,8 @@ export default function HomePage() {
           <strong>El Taulell</strong>
         </Link>
         <p>Una plataforma educativa multi-centre en desenvolupament.</p>
+        <Link href="/privacitat">Privacitat</Link>
+        <Link href="/termes">Termes d'ús</Link>
         <Link href="/acces">Accés als perfils</Link>
       </footer>
     </main>

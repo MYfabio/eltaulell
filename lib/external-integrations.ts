@@ -4,6 +4,7 @@ import { getViewerAccessContext } from "@/lib/access-control";
 import { db } from "@/lib/db";
 import type { DemoViewer } from "@/lib/demo-auth";
 import { sendSystemNoticeEmail } from "@/lib/email";
+import { logSystemError } from "@/lib/observability";
 import { decryptSecret, encryptSecret, isSecretEncryptionConfigured } from "@/lib/secret-box";
 
 type ExternalProvider = "MOODLE" | "IEDUCA";
@@ -398,6 +399,13 @@ export async function syncExternalIntegration(viewer: DemoViewer, provider: Exte
     return { processedCount };
   } catch (error) {
     const message = error instanceof Error ? error.message : "SYNC_FAILED";
+    await logSystemError({
+      schoolId: access.schoolId,
+      source: "external-integration",
+      code: `${provider}_SYNC_FAILED`,
+      error,
+      metadata: { provider },
+    });
     await Promise.all([
       db.integrationSyncJob.update({
         where: { id: job.id },

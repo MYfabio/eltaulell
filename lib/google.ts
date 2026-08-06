@@ -5,6 +5,7 @@ import { getViewerAccessContext } from "@/lib/access-control";
 import { db } from "@/lib/db";
 import type { DemoViewer } from "@/lib/demo-auth";
 import { decryptSecret, encryptSecret, isSecretEncryptionConfigured } from "@/lib/secret-box";
+import { logSystemError } from "@/lib/observability";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_API = "https://www.googleapis.com";
@@ -454,6 +455,12 @@ export async function syncGoogleClassroom(viewer: DemoViewer) {
     ]);
     return { processedCount, courseCount: courses.length };
   } catch (error) {
+    await logSystemError({
+      schoolId: access.schoolId,
+      source: "google-classroom",
+      code: "GOOGLE_CLASSROOM_SYNC_FAILED",
+      error,
+    });
     await Promise.all([
       db.integrationSyncJob.update({
         where: { id: job.id },

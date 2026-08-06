@@ -91,6 +91,7 @@ export default function PortalShell({
       </section>
 
       <div className="portal-content">{children}</div>
+      <footer className="portal-legal"><Link href="/privacitat">Privacitat</Link><Link href="/termes">Termes d'ús</Link></footer>
     </main>
   );
 }

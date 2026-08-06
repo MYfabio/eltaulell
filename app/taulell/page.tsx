@@ -4,6 +4,7 @@ import { listBoardChoices, listPosts } from "@/lib/board-store";
 import { requireDemoPermission } from "@/lib/demo-auth";
 import { PERMISSIONS } from "@/lib/permissions";
 import { listOwnLearningTasks } from "@/lib/learning";
+import { listCalendarEvents } from "@/lib/calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +26,16 @@ export default async function BoardPage({
   if (!selectedBoard) {
     throw new Error("Aquest perfil encara no té cap taulell assignat.");
   }
-  const [initialPosts, initialLearningTasks] = await Promise.all([
+  const [initialPosts, initialLearningTasks, initialCalendarEvents] = await Promise.all([
     listPosts(viewer, selectedBoard.groupId),
     listOwnLearningTasks(viewer, selectedBoard.groupId),
+    listCalendarEvents(viewer, new Date(), new Date(Date.now() + 14 * 24 * 60 * 60_000)),
   ]);
 
   return (
     <BoardClient
       boards={boards}
+      initialCalendarEvents={initialCalendarEvents}
       initialLearningTasks={initialLearningTasks}
       initialPosts={initialPosts}
       key={selectedBoard.boardId}

@@ -62,47 +62,6 @@ function isCardPosition(value: unknown): value is CardPosition {
   return Number.isFinite(position.x) && Number.isFinite(position.y);
 }
 
-const initialNotes: Note[] = [
-  {
-    id: "1",
-    type: "Avisos",
-    title: "Sortida al Museu de la Ciència",
-    body: "Recordeu portar l’autorització signada abans de divendres.",
-    meta: "Marta · Tutora · fa 2 h",
-    color: "yellow",
-    icon: "🧪",
-  },
-  {
-    id: "2",
-    type: "Tasques",
-    title: "Matemàtiques · Funcions",
-    body: "Exercicis 12, 13 i 16. Repassa abans l’exemple de la pàgina 84.",
-    meta: "Classroom · Entrega demà",
-    color: "blue",
-    icon: "📐",
-    link: "Obrir a Classroom",
-  },
-  {
-    id: "3",
-    type: "Activitats",
-    title: "Torneig de futbol sala",
-    body: "Inscripcions obertes! Equips de 5 persones. Parleu amb la delegada.",
-    meta: "Laia · Delegada · avui",
-    color: "pink",
-    icon: "⚽",
-  },
-  {
-    id: "4",
-    type: "Materials",
-    title: "Guia del projecte d’Història",
-    body: "Ja teniu disponible la rúbrica i els materials de suport.",
-    meta: "Moodle · Actualitzat avui",
-    color: "green",
-    icon: "📚",
-    link: "Veure a Moodle",
-  },
-];
-
 const filters: Array<"Tot" | NoteType> = [
   "Tot",
   "Avisos",
@@ -168,12 +127,19 @@ const taskStatusLabels: Record<TaskStatus, string> = {
 
 export default function BoardClient({
   boards,
+  initialCalendarEvents,
   initialLearningTasks,
   initialPosts,
   selectedBoard,
   viewer,
 }: {
   boards: BoardChoice[];
+  initialCalendarEvents: Array<{
+    id: string;
+    title: string;
+    startsAt: string;
+    source: string;
+  }>;
   initialLearningTasks: LearningTaskItem[];
   initialPosts: StoredBoardPost[];
   selectedBoard: BoardChoice;
@@ -644,7 +610,7 @@ export default function BoardClient({
           <div className="brand-mark">T</div>
           <div>
             <strong>El Taulell</strong>
-            <span>Institut Can Roca</span>
+            <span>{viewer.school}</span>
           </div>
         </div>
 
@@ -964,33 +930,16 @@ export default function BoardClient({
                 <span>AVUI</span>
                 <strong>La teva agenda</strong>
               </div>
-              <button type="button">Veure tot</button>
+              <Link href="/calendari">Veure tot</Link>
             </div>
             <div className="timeline">
-              <div>
-                <time>10:15</time>
-                <i className="dot blue-dot" />
-                <p>
-                  <strong>Entrega · Matemàtiques</strong>
-                  <span>Classroom</span>
-                </p>
-              </div>
-              <div>
-                <time>12:30</time>
-                <i className="dot orange-dot" />
-                <p>
-                  <strong>Tutoria de grup</strong>
-                  <span>Aula 3.12</span>
-                </p>
-              </div>
-              <div>
-                <time>16:00</time>
-                <i className="dot green-dot" />
-                <p>
-                  <strong>Entrenament de vòlei</strong>
-                  <span>Gimnàs</span>
-                </p>
-              </div>
+              {initialCalendarEvents.slice(0, 3).map((event) => (
+                <div key={event.id}>
+                  <time>{new Intl.DateTimeFormat("ca-ES", { hour: "2-digit", minute: "2-digit" }).format(new Date(event.startsAt))}</time>
+                  <i className="dot blue-dot" />
+                  <p><strong>{event.title}</strong><span>{event.source === "EL_TAULELL" ? "El Taulell" : event.source.replaceAll("_", " ")}</span></p>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -1000,7 +949,7 @@ export default function BoardClient({
               <b className="classroom-logo">C</b>
               <p>
                 <strong>Google Classroom</strong>
-                <span>Connexió pendent</span>
+                <span>{learningTasks.filter((task) => task.classroomLinked).length} tasques vinculades</span>
               </p>
               <em>↗</em>
             </Link>
@@ -1008,20 +957,12 @@ export default function BoardClient({
               <b className="moodle-logo">M</b>
               <p>
                 <strong>Moodle</strong>
-                <span>Servei no disponible</span>
+                <span>Recursos importats al tauler</span>
               </p>
               <em>↗</em>
             </Link>
           </section>
 
-          <section className="delegate card">
-            <div className="delegate-photo">LC</div>
-            <div>
-              <span>DELEGADA DEL GRUP</span>
-              <strong>Laia Canals</strong>
-              <p>Pot publicar activitats i crear consultes anònimes.</p>
-            </div>
-          </section>
         </aside>}
       </div>
 
@@ -1058,7 +999,7 @@ export default function BoardClient({
           </header>
           <div className="chat-content">
             <div className="bot-message">
-              Hola, Marc! Pregunta’m què hi ha al tauler o demana’m una pista per
+              Hola, {viewer.firstName}! Pregunta’m què hi ha al tauler o demana’m una pista per
               començar els deures.
             </div>
             {answer && <div className="bot-message answer">{answer}</div>}

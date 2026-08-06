@@ -6,6 +6,7 @@ import { requireDemoPermission } from "@/lib/demo-auth";
 import { inviteGroupsFor, listGroupInvites } from "@/lib/group-invites";
 import { can, PERMISSIONS } from "@/lib/permissions";
 import { getLearningDashboard } from "@/lib/learning";
+import { listCalendarEvents } from "@/lib/calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ export default async function TutoringPage() {
     ? await Promise.all([inviteGroupsFor(viewer), listGroupInvites(viewer)])
     : [[], []];
   const dashboard = canViewFollowup ? await getLearningDashboard(viewer) : null;
+  const nextEvents = await listCalendarEvents(viewer, new Date(), new Date(Date.now() + 14 * 24 * 60 * 60_000));
+  const nextEvent = nextEvents[0];
   const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
   return (
@@ -40,9 +43,8 @@ export default async function TutoringPage() {
         </article>
 
         <article className="portal-panel">
-          <p className="panel-label">PROPERA TUTORIA</p>
-          <div className="metric"><strong>12:30</strong><span>Avui</span></div>
-          <p>Aula 3.12 · Dinàmica de grup i preparació de la sortida.</p>
+          <p className="panel-label">PROPER ELEMENT</p>
+          {nextEvent && <><div className="metric"><strong>{new Intl.DateTimeFormat("ca-ES", { hour: "2-digit", minute: "2-digit" }).format(new Date(nextEvent.startsAt))}</strong><span>{new Intl.DateTimeFormat("ca-ES", { dateStyle: "medium" }).format(new Date(nextEvent.startsAt))}</span></div><p>{nextEvent.title}</p></>}
         </article>
 
         <article className="portal-panel">

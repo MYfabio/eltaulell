@@ -8,7 +8,7 @@ type DbMethod = (args: any) => Promise<any>;
 
 export interface DatabaseClient {
   $transaction<T>(operation: (transaction: DatabaseClient) => Promise<T>): Promise<T>;
-  auditLog: { create: DbMethod };
+  auditLog: { create: DbMethod; deleteMany: DbMethod; findMany: DbMethod };
   platformAdmin: { findFirst: DbMethod; upsert: DbMethod };
   platformAuditLog: { create: DbMethod; findMany: DbMethod };
   demoRequest: {
@@ -20,6 +20,7 @@ export interface DatabaseClient {
   };
   learningTask: {
     create: DbMethod;
+    deleteMany: DbMethod;
     findFirst: DbMethod;
     findMany: DbMethod;
     updateMany: DbMethod;
@@ -33,6 +34,7 @@ export interface DatabaseClient {
   };
   anonymousQuery: {
     create: DbMethod;
+    deleteMany: DbMethod;
     findFirst: DbMethod;
     findMany: DbMethod;
     update: DbMethod;
@@ -61,6 +63,13 @@ export interface DatabaseClient {
     update: DbMethod;
     updateMany: DbMethod;
   };
+  dataRetentionPolicy: { findMany: DbMethod; upsert: DbMethod };
+  systemErrorLog: {
+    count: DbMethod;
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findMany: DbMethod;
+  };
   board: { findMany: DbMethod; upsert: DbMethod };
   postIt: {
     create: DbMethod;
@@ -85,7 +94,7 @@ export interface DatabaseClient {
     updateMany: DbMethod;
   };
   boardPollVote: { create: DbMethod };
-  group: { create: DbMethod; findFirst: DbMethod; upsert: DbMethod };
+  group: { create: DbMethod; findFirst: DbMethod; findMany: DbMethod; upsert: DbMethod };
   groupMembership: {
     count: DbMethod;
     create: DbMethod;
@@ -170,6 +179,8 @@ type LocalState = {
   calendarEvents: Row[];
   emailDeliveries: Row[];
   passwordResetTokens: Row[];
+  retentionPolicies: Row[];
+  systemErrorLogs: Row[];
 };
 
 function makeState(): LocalState {
@@ -205,6 +216,8 @@ function makeState(): LocalState {
     calendarEvents: [],
     emailDeliveries: [],
     passwordResetTokens: [],
+    retentionPolicies: [],
+    systemErrorLogs: [],
   };
 }
 
@@ -716,6 +729,16 @@ export function createLocalDb(): DatabaseClient {
         }
         return tasks;
       },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.learningTasks.length;
+        state.learningTasks = state.learningTasks.filter((task) => {
+          if (where.schoolId && task.schoolId !== where.schoolId) return true;
+          if (where.updatedAt?.lt && task.updatedAt >= where.updatedAt.lt) return true;
+          return false;
+        });
+        persistState();
+        return { count: before - state.learningTasks.length };
+      },
       async updateMany({ where, data }: Row) {
         const matches = state.learningTasks.filter((task) => {
           if (where.id && task.id !== where.id) return false;
@@ -757,9 +780,11 @@ export function createLocalDb(): DatabaseClient {
       },
       async deleteMany({ where = {} }: Row = {}) {
         const before = state.aiUsageEvents.length;
-        state.aiUsageEvents = state.aiUsageEvents.filter((event) =>
-          !(where.createdAt?.lt && event.createdAt < where.createdAt.lt),
-        );
+        state.aiUsageEvents = state.aiUsageEvents.filter((event) => {
+          if (where.schoolId && event.schoolId !== where.schoolId) return true;
+          if (where.createdAt?.lt && event.createdAt >= where.createdAt.lt) return true;
+          return false;
+        });
         persistState();
         return { count: before - state.aiUsageEvents.length };
       },
@@ -815,6 +840,20 @@ export function createLocalDb(): DatabaseClient {
         Object.assign(query, data, { updatedAt: now() });
         persistState();
         return query;
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const removedIds = state.anonymousQueries
+          .filter((query) => {
+            if (where.schoolId && query.schoolId !== where.schoolId) return false;
+            if (where.status && query.status !== where.status) return false;
+            if (where.closedAt?.lt && (!query.closedAt || query.closedAt >= where.closedAt.lt)) return false;
+            return true;
+          })
+          .map((query) => query.id);
+        state.anonymousQueries = state.anonymousQueries.filter((query) => !removedIds.includes(query.id));
+        state.anonymousQueryMessages = state.anonymousQueryMessages.filter((message) => !removedIds.includes(message.queryId));
+        persistState();
+        return { count: removedIds.length };
       },
     },
 
@@ -1082,6 +1121,66 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
+    dataRetentionPolicy: {
+      async upsert({ where, create, update }: Row) {
+        const existing = state.retentionPolicies.find((policy) => policy.schoolId === where.schoolId);
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const policy = {
+          id: randomUUID(),
+          taskRetentionDays: 730,
+          aiUsageRetentionDays: 90,
+          queryRetentionDays: 365,
+          auditRetentionDays: 730,
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.retentionPolicies.push(policy);
+        persistState();
+        return policy;
+      },
+      async findMany() {
+        return state.retentionPolicies;
+      },
+    },
+
+    systemErrorLog: {
+      async create({ data }: Row) {
+        const entry = { id: randomUUID(), createdAt: now(), ...data };
+        state.systemErrorLogs.push(entry);
+        persistState();
+        return entry;
+      },
+      async count({ where = {} }: Row = {}) {
+        return state.systemErrorLogs.filter((entry) => {
+          if (where.schoolId && entry.schoolId !== where.schoolId) return false;
+          if (where.createdAt?.gte && entry.createdAt < where.createdAt.gte) return false;
+          return true;
+        }).length;
+      },
+      async findMany({ where = {}, orderBy, take }: Row = {}) {
+        const entries = state.systemErrorLogs.filter((entry) => {
+          if (where.schoolId && entry.schoolId !== where.schoolId) return false;
+          if (where.createdAt?.gte && entry.createdAt < where.createdAt.gte) return false;
+          return true;
+        });
+        if (orderBy?.createdAt === "desc") entries.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+        return typeof take === "number" ? entries.slice(0, take) : entries;
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.systemErrorLogs.length;
+        state.systemErrorLogs = state.systemErrorLogs.filter((entry) =>
+          !(where.createdAt?.lt && entry.createdAt < where.createdAt.lt),
+        );
+        persistState();
+        return { count: before - state.systemErrorLogs.length };
+      },
+    },
+
     invitation: {
       async create({ data }: Row) {
         if (state.invitations.some((invitation) => invitation.tokenHash === data.tokenHash)) {
@@ -1276,6 +1375,12 @@ export function createLocalDb(): DatabaseClient {
               && (!where.name || group.name === where.name),
           ) ?? null
         );
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.groups.filter((group) => {
+          if (where.schoolId && group.schoolId !== where.schoolId) return false;
+          return true;
+        });
       },
       async create({ data }: Row) {
         if (
@@ -1532,6 +1637,19 @@ export function createLocalDb(): DatabaseClient {
         const entry = { id: randomUUID(), createdAt: now(), ...data };
         state.auditLogs.push(entry);
         return entry;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.auditLogs.filter((entry) => !where.schoolId || entry.schoolId === where.schoolId);
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.auditLogs.length;
+        state.auditLogs = state.auditLogs.filter((entry) => {
+          if (where.schoolId && entry.schoolId !== where.schoolId) return true;
+          if (where.createdAt?.lt && entry.createdAt >= where.createdAt.lt) return true;
+          return false;
+        });
+        persistState();
+        return { count: before - state.auditLogs.length };
       },
     },
 
