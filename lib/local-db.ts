@@ -18,6 +18,19 @@ export interface DatabaseClient {
     findUnique: DbMethod;
     update: DbMethod;
   };
+  learningTask: {
+    create: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    updateMany: DbMethod;
+    upsert: DbMethod;
+  };
+  aiUsageEvent: {
+    count: DbMethod;
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findMany: DbMethod;
+  };
   board: { findMany: DbMethod; upsert: DbMethod };
   postIt: {
     create: DbMethod;
@@ -87,6 +100,7 @@ export interface DatabaseClient {
   };
   session: {
     create: DbMethod;
+    findMany: DbMethod;
     findUnique: DbMethod;
     update: DbMethod;
     updateMany: DbMethod;
@@ -114,6 +128,8 @@ type LocalState = {
   sessions: Row[];
   users: Row[];
   votes: Row[];
+  learningTasks: Row[];
+  aiUsageEvents: Row[];
 };
 
 function makeState(): LocalState {
@@ -137,6 +153,8 @@ function makeState(): LocalState {
     sessions: [],
     users: [],
     votes: [],
+    learningTasks: [],
+    aiUsageEvents: [],
   };
 }
 
@@ -432,6 +450,24 @@ export function createLocalDb(): DatabaseClient {
         );
         return session ? sessionResult(session) : null;
       },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const sessions = state.sessions.filter((session) => {
+          if (
+            where.schoolMembershipId?.in &&
+            !where.schoolMembershipId.in.includes(session.schoolMembershipId)
+          ) {
+            return false;
+          }
+          if (where.revokedAt === null && session.revokedAt !== null) return false;
+          return true;
+        });
+        if (orderBy?.lastSeenAt === "desc") {
+          sessions.sort(
+            (left, right) => right.lastSeenAt.getTime() - left.lastSeenAt.getTime(),
+          );
+        }
+        return sessions;
+      },
       async update({ where, data }: Row) {
         const session = state.sessions.find((candidate) => candidate.id === where.id);
         if (!session) throw new Error("Session not found");
@@ -557,6 +593,115 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
+    learningTask: {
+      async upsert({ where, create, update }: Row) {
+        const existing = state.learningTasks.find((task) =>
+          where.id
+            ? task.id === where.id
+            : task.studentMembershipId === where.studentMembershipId_provider_externalId?.studentMembershipId
+              && task.provider === where.studentMembershipId_provider_externalId?.provider
+              && task.externalId === where.studentMembershipId_provider_externalId?.externalId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const task = {
+          id: create.id ?? randomUUID(),
+          status: "PENDING",
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.learningTasks.push(task);
+        persistState();
+        return task;
+      },
+      async create({ data }: Row) {
+        const task = {
+          id: data.id ?? randomUUID(),
+          status: "PENDING",
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.learningTasks.push(task);
+        persistState();
+        return task;
+      },
+      async findFirst({ where }: Row) {
+        return state.learningTasks.find((task) => {
+          if (where.id && task.id !== where.id) return false;
+          if (where.schoolId && task.schoolId !== where.schoolId) return false;
+          if (where.groupId && task.groupId !== where.groupId) return false;
+          if (where.studentMembershipId && task.studentMembershipId !== where.studentMembershipId) return false;
+          return true;
+        }) ?? null;
+      },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const tasks = state.learningTasks.filter((task) => {
+          if (where.schoolId && task.schoolId !== where.schoolId) return false;
+          if (typeof where.groupId === "string" && task.groupId !== where.groupId) return false;
+          if (where.groupId?.in && !where.groupId.in.includes(task.groupId)) return false;
+          if (typeof where.studentMembershipId === "string" && task.studentMembershipId !== where.studentMembershipId) return false;
+          if (where.studentMembershipId?.in && !where.studentMembershipId.in.includes(task.studentMembershipId)) return false;
+          if (where.status && task.status !== where.status) return false;
+          return true;
+        });
+        if (orderBy?.dueAt === "asc") {
+          tasks.sort((left, right) => (left.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER) - (right.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER));
+        }
+        return tasks;
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.learningTasks.filter((task) => {
+          if (where.id && task.id !== where.id) return false;
+          if (where.schoolId && task.schoolId !== where.schoolId) return false;
+          if (where.studentMembershipId && task.studentMembershipId !== where.studentMembershipId) return false;
+          return true;
+        });
+        matches.forEach((task) => Object.assign(task, data, { updatedAt: now() }));
+        persistState();
+        return { count: matches.length };
+      },
+    },
+
+    aiUsageEvent: {
+      async create({ data }: Row) {
+        const event = { id: randomUUID(), createdAt: now(), ...data };
+        state.aiUsageEvents.push(event);
+        persistState();
+        return event;
+      },
+      async count({ where = {} }: Row = {}) {
+        return state.aiUsageEvents.filter((event) => {
+          if (where.studentMembershipId && event.studentMembershipId !== where.studentMembershipId) return false;
+          if (typeof where.groupId === "string" && event.groupId !== where.groupId) return false;
+          if (where.createdAt?.gte && event.createdAt < where.createdAt.gte) return false;
+          return true;
+        }).length;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.aiUsageEvents.filter((event) => {
+          if (where.schoolId && event.schoolId !== where.schoolId) return false;
+          if (typeof where.groupId === "string" && event.groupId !== where.groupId) return false;
+          if (where.groupId?.in && !where.groupId.in.includes(event.groupId)) return false;
+          if (where.studentMembershipId && event.studentMembershipId !== where.studentMembershipId) return false;
+          if (where.createdAt?.gte && event.createdAt < where.createdAt.gte) return false;
+          return true;
+        });
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.aiUsageEvents.length;
+        state.aiUsageEvents = state.aiUsageEvents.filter((event) =>
+          !(where.createdAt?.lt && event.createdAt < where.createdAt.lt),
+        );
+        persistState();
+        return { count: before - state.aiUsageEvents.length };
+      },
+    },
+
     invitation: {
       async create({ data }: Row) {
         if (state.invitations.some((invitation) => invitation.tokenHash === data.tokenHash)) {
@@ -651,11 +796,14 @@ export function createLocalDb(): DatabaseClient {
           ) ?? null
         );
       },
-      async findMany({ where }: Row) {
+      async findMany({ where = {}, include }: Row = {}) {
         return state.memberships
           .filter((membership) => {
+            if (where.schoolId && membership.schoolId !== where.schoolId) return false;
             if (where.userId && membership.userId !== where.userId) return false;
             if (where.status && membership.status !== where.status) return false;
+            if (typeof where.role === "string" && membership.role !== where.role) return false;
+            if (where.role?.in && !where.role.in.includes(membership.role)) return false;
             const school = schoolById(membership.schoolId);
             if (where.school?.active !== undefined && school?.active !== where.school.active) {
               return false;
@@ -663,10 +811,22 @@ export function createLocalDb(): DatabaseClient {
             if (where.school?.slug && school?.slug !== where.school.slug) return false;
             return true;
           })
-          .map((membership) => ({
-            ...membership,
-            school: schoolById(membership.schoolId),
-          }))
+          .map((membership) => {
+            const base: Row = {
+              ...membership,
+              school: schoolById(membership.schoolId),
+            };
+            if (include?.user) base.user = userById(membership.userId);
+            if (include?.groupMemberships) {
+              base.groupMemberships = state.groupMemberships
+                .filter((assignment) => assignment.schoolMembershipId === membership.id)
+                .map((assignment) => ({
+                  ...assignment,
+                  group: groupById(assignment.groupId),
+                }));
+            }
+            return base;
+          })
           .sort((left, right) =>
             String(left.school?.name || "").localeCompare(String(right.school?.name || "")),
           );

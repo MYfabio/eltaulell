@@ -6,11 +6,10 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { BoardChoice, StoredBoardPost } from "@/lib/board-store";
 import {
   BOARD_THEMES,
-  tasksForStudent,
   type BoardTheme,
-  type LearningTask,
+  type LearningTaskItem,
   type TaskStatus,
-} from "@/lib/demo-insights";
+} from "@/lib/learning-types";
 import type { DemoViewer } from "@/lib/demo-auth";
 import {
   can,
@@ -169,17 +168,17 @@ const taskStatusLabels: Record<TaskStatus, string> = {
 
 export default function BoardClient({
   boards,
+  initialLearningTasks,
   initialPosts,
   selectedBoard,
   viewer,
 }: {
   boards: BoardChoice[];
+  initialLearningTasks: LearningTaskItem[];
   initialPosts: StoredBoardPost[];
   selectedBoard: BoardChoice;
   viewer: DemoViewer;
 }) {
-  const taskOwnerId = viewer.id === "student-marc" ? "marc-costa" : viewer.id;
-  const taskStorageKey = `eltaulell-learning-tasks-${taskOwnerId}`;
   const cardPositionStorageKey =
     `eltaulell-card-positions-${viewer.id}-${selectedBoard.groupId}`;
   const canArrangeBoard = can(viewer, PERMISSIONS.ARRANGE_BOARD);
@@ -199,11 +198,8 @@ export default function BoardClient({
   const [actionMessage, setActionMessage] = useState("");
   const [boardTheme, setBoardTheme] = useState<BoardTheme>("cork");
   const [resourcesOpen, setResourcesOpen] = useState(false);
-  const [learningTasks, setLearningTasks] = useState<LearningTask[]>(() =>
-    tasksForStudent(taskOwnerId),
-  );
+  const [learningTasks, setLearningTasks] = useState<LearningTaskItem[]>(initialLearningTasks);
   const [classroomNotice, setClassroomNotice] = useState("");
-  const [tasksHydrated, setTasksHydrated] = useState(false);
   const [feedbackTaskId, setFeedbackTaskId] = useState<string | null>(null);
   const [cardPositions, setCardPositions] = useState<Record<string, CardPosition>>({});
   const [loadedCardPositionKey, setLoadedCardPositionKey] = useState<string | null>(null);
@@ -272,25 +268,6 @@ export default function BoardClient({
   useEffect(() => {
     window.localStorage.setItem("eltaulell-board-theme", boardTheme);
   }, [boardTheme]);
-
-  useEffect(() => {
-    try {
-      const savedTasks = window.sessionStorage.getItem(taskStorageKey);
-      if (savedTasks) {
-        const parsedTasks = JSON.parse(savedTasks) as LearningTask[];
-        if (Array.isArray(parsedTasks)) setLearningTasks(parsedTasks);
-      }
-    } catch {
-      window.sessionStorage.removeItem(taskStorageKey);
-    } finally {
-      setTasksHydrated(true);
-    }
-  }, [taskStorageKey]);
-
-  useEffect(() => {
-    if (!tasksHydrated) return;
-    window.sessionStorage.setItem(taskStorageKey, JSON.stringify(learningTasks));
-  }, [learningTasks, taskStorageKey, tasksHydrated]);
 
   useEffect(() => {
     if (!canArrangeBoard) {
@@ -592,18 +569,29 @@ export default function BoardClient({
     setCardPositions({});
   }
 
-  function updateTaskStatus(taskId: string, status: TaskStatus) {
+  async function updateTaskStatus(taskId: string, status: TaskStatus) {
     const task = learningTasks.find((item) => item.id === taskId);
     if (!task || viewer.role !== "STUDENT") return;
 
     setLearningTasks((current) =>
       current.map((item) => (item.id === taskId ? { ...item, status } : item)),
     );
-
+    const response = await fetch(`/api/learning/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      setLearningTasks((current) =>
+        current.map((item) => (item.id === taskId ? task : item)),
+      );
+      const body = await response.json().catch(() => null) as { error?: string } | null;
+      setClassroomNotice(body?.error || "No s'ha pogut actualitzar la tasca.");
+    }
   }
 
-  function startTask(task: LearningTask) {
-    if (task.status === "PENDING") updateTaskStatus(task.id, "IN_PROGRESS");
+  function startTask(task: LearningTaskItem) {
+    if (task.status === "PENDING") void updateTaskStatus(task.id, "IN_PROGRESS");
     setQuery(`Ajuda'm a començar: ${task.title}`);
     setAnswer(
       `Comencem per entendre què et demana la tasca de ${task.subject}. Quina part tens clara i quin seria el primer pas més petit que podries fer?`,
@@ -616,21 +604,21 @@ export default function BoardClient({
     );
   }
 
-  function deliverTask(task: LearningTask) {
-    updateTaskStatus(task.id, "DELIVERED");
+  function deliverTask(task: LearningTaskItem) {
+    void updateTaskStatus(task.id, "DELIVERED");
     setFeedbackTaskId(null);
     setClassroomNotice(
       task.classroomLinked
-        ? "Tasca marcada com a lliurada en aquesta demo local. Encara no s'ha enviat a Classroom perquè falta l'autorització OAuth."
-        : "Tasca marcada com a lliurada en aquesta demo local.",
+        ? "Tasca lliurada al Taulell. La sincronització amb Classroom s'executarà quan la connexió estigui activa."
+        : "Tasca marcada com a lliurada.",
     );
   }
 
-  function reclaimTask(task: LearningTask) {
-    updateTaskStatus(task.id, "IN_PROGRESS");
+  function reclaimTask(task: LearningTaskItem) {
+    void updateTaskStatus(task.id, "IN_PROGRESS");
     setClassroomNotice(
       task.classroomLinked
-        ? "Lliurament anul·lat en aquesta demo local. La recuperació real a Classroom s'activarà amb OAuth."
+        ? "Lliurament recuperat al Taulell. Classroom s'actualitzarà durant la sincronització."
         : "La tasca torna a estar en procés.",
     );
   }
@@ -842,7 +830,7 @@ export default function BoardClient({
                         </div>
 
                         <div className="task-card-badges">
-                          {task.classroomLinked && <em>Classroom · OAuth pendent</em>}
+                          {task.classroomLinked && <em>Google Classroom</em>}
                           {status === "IN_PROGRESS" && <b>En procés</b>}
                           {status === "DELIVERED" && <b>Esperant qualificació</b>}
                         </div>

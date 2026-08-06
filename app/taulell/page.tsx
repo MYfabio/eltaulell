@@ -3,6 +3,7 @@ import BoardClient from "./board-client";
 import { listBoardChoices, listPosts } from "@/lib/board-store";
 import { requireDemoPermission } from "@/lib/demo-auth";
 import { PERMISSIONS } from "@/lib/permissions";
+import { listOwnLearningTasks } from "@/lib/learning";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +25,15 @@ export default async function BoardPage({
   if (!selectedBoard) {
     throw new Error("Aquest perfil encara no té cap taulell assignat.");
   }
-  const initialPosts = await listPosts(viewer, selectedBoard.groupId);
+  const [initialPosts, initialLearningTasks] = await Promise.all([
+    listPosts(viewer, selectedBoard.groupId),
+    listOwnLearningTasks(viewer, selectedBoard.groupId),
+  ]);
 
   return (
     <BoardClient
       boards={boards}
+      initialLearningTasks={initialLearningTasks}
       initialPosts={initialPosts}
       key={selectedBoard.boardId}
       selectedBoard={selectedBoard}

@@ -1,12 +1,9 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import PortalShell from "@/app/components/portal-shell";
-import {
-  GROUP_AI_USAGE,
-  studentById,
-  tasksForStudent,
-  type TaskStatus,
-} from "@/lib/demo-insights";
 import { requireDemoPermission } from "@/lib/demo-auth";
+import { getLearningDashboard, listStudentLearningTasksForStaff } from "@/lib/learning";
+import type { TaskStatus } from "@/lib/learning-types";
 import { PERMISSIONS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -26,8 +23,11 @@ export default async function ObserverPage({
   const viewer = await requireDemoPermission(PERMISSIONS.MANAGE_SCHOOL);
   const params = await searchParams;
   const requestedStudent = Array.isArray(params.student) ? params.student[0] : params.student;
-  const student = studentById(requestedStudent);
-  const tasks = tasksForStudent(student.id);
+  const dashboard = await getLearningDashboard(viewer);
+  const student = dashboard.students.find((item) => item.id === requestedStudent)
+    ?? (!requestedStudent ? dashboard.students[0] : null);
+  if (!student) notFound();
+  const tasks = await listStudentLearningTasksForStaff(viewer, student.id);
 
   return (
     <PortalShell
@@ -78,7 +78,7 @@ export default async function ObserverPage({
               <p className="panel-label">ORGANITZACIÓ PERSONAL</p>
               <h2>Estat de les tasques</h2>
             </div>
-            <small>La sincronització amb Classroom encara és una simulació local.</small>
+            <small>Dades persistents del centre; Classroom s'indica quan la tasca està vinculada.</small>
           </header>
           <div className="observer-task-board">
             {(Object.keys(STATUS_LABELS) as TaskStatus[]).map((status) => (
@@ -109,9 +109,9 @@ export default async function ObserverPage({
           </p>
           <ul className="observer-ai-summary">
             <li>
-              <span><strong>Grup {GROUP_AI_USAGE.group}</strong><small>{GROUP_AI_USAGE.period}</small></span>
-              <span>{GROUP_AI_USAGE.totalQuestions} preguntes en total</span>
-              <em>{GROUP_AI_USAGE.totalMinutes} minuts agregats</em>
+              <span><strong>Grup {dashboard.aiUsage.group}</strong><small>{dashboard.aiUsage.period}</small></span>
+              <span>{dashboard.aiUsage.totalQuestions} preguntes en total</span>
+              <em>{dashboard.aiUsage.totalMinutes} minuts agregats</em>
             </li>
           </ul>
         </article>
@@ -122,7 +122,7 @@ export default async function ObserverPage({
           <div className="student-context-list">
             <p><span>Etapa</span><strong>{student.stage}</strong></p>
             <p><span>Tutoria</span><strong>{student.tutor}</strong></p>
-            <p><span>Mitjana</span><strong>{student.averageGrade.toFixed(1)}</strong></p>
+            <p><span>Mitjana</span><strong>{student.averageGrade?.toFixed(1) ?? "—"}</strong></p>
             <p><span>Privacitat IA</span><strong>Sense dades individuals</strong></p>
           </div>
         </article>

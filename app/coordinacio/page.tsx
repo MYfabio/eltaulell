@@ -6,12 +6,16 @@ import { getAdminSnapshot } from "@/lib/admin";
 import { isConfiguredCentreAdminEmail } from "@/lib/centre-admin-auth";
 import { requireDemoPermission } from "@/lib/demo-auth";
 import { PERMISSIONS } from "@/lib/permissions";
+import { getLearningDashboard } from "@/lib/learning";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoordinationPage() {
   const viewer = await requireDemoPermission(PERMISSIONS.MANAGE_SCHOOL);
-  const snapshot = await getAdminSnapshot(viewer);
+  const [snapshot, learningDashboard] = await Promise.all([
+    getAdminSnapshot(viewer),
+    getLearningDashboard(viewer),
+  ]);
   const activePeople = snapshot.people.filter((person) => person.status === "ACTIVE").length;
   const pendingPeople = snapshot.people.filter((person) => person.status === "INVITED").length;
   const canManageDemoRequests = isConfiguredCentreAdminEmail(viewer.email);
@@ -52,7 +56,7 @@ export default async function CoordinationPage() {
           <p>La coordinació només pot administrar les dades del centre on està assignada.</p>
         </article>
 
-        <CoordinationOverview />
+        <CoordinationOverview dashboard={learningDashboard} />
 
         <AdministrationClient initialData={snapshot} />
 
