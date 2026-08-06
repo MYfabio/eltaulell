@@ -163,6 +163,143 @@
   padding-bottom: 80px;
 }
 
+.portal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-self: start;
+}
+
+.portal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4c596b;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.portal-form input,
+.portal-form select,
+.portal-form textarea,
+.query-reply textarea {
+  width: 100%;
+  border: 1px solid #dfe3dd;
+  border-radius: 9px;
+  padding: 10px 11px;
+  background: #fbfcf9;
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.portal-form button,
+.query-reply button,
+.calendar-event button {
+  border: 0;
+  border-radius: 9px;
+  padding: 10px 13px;
+  background: var(--navy);
+  color: white;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.portal-form small,
+.query-thread small,
+.calendar-event small {
+  color: var(--muted);
+}
+
+.query-list,
+.calendar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.query-list.wide,
+.calendar-list.wide {
+  grid-column: span 8;
+}
+
+.query-list.full,
+.calendar-list.full {
+  grid-column: 1 / -1;
+}
+
+.query-thread header,
+.calendar-event {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.query-thread h2,
+.calendar-event h2 {
+  margin: 7px 0 3px;
+}
+
+.query-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.query-messages p {
+  max-width: 82%;
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: #f2f4ef;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.query-messages p.staff {
+  align-self: flex-end;
+  background: #e7eff8;
+}
+
+.query-messages strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.query-reply {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 9px;
+}
+
+.calendar-event time {
+  min-width: 130px;
+  color: #b35d31;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calendar-event div {
+  flex: 1;
+}
+
+.calendar-event p {
+  margin: 5px 0 8px;
+}
+
+.form-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #eef5ea;
+  color: #365a3b;
+  font-size: 12px;
+}
+
 .portal-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);

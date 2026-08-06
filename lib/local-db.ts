@@ -31,6 +31,13 @@ export interface DatabaseClient {
     deleteMany: DbMethod;
     findMany: DbMethod;
   };
+  anonymousQuery: {
+    create: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    update: DbMethod;
+  };
+  anonymousQueryMessage: { create: DbMethod; findMany: DbMethod };
   integrationConnection: {
     findFirst: DbMethod;
     update: DbMethod;
@@ -145,6 +152,8 @@ type LocalState = {
   votes: Row[];
   learningTasks: Row[];
   aiUsageEvents: Row[];
+  anonymousQueries: Row[];
+  anonymousQueryMessages: Row[];
   integrationConnections: Row[];
   syncJobs: Row[];
   externalCourses: Row[];
@@ -175,6 +184,8 @@ function makeState(): LocalState {
     votes: [],
     learningTasks: [],
     aiUsageEvents: [],
+    anonymousQueries: [],
+    anonymousQueryMessages: [],
     integrationConnections: [],
     syncJobs: [],
     externalCourses: [],
@@ -737,6 +748,77 @@ export function createLocalDb(): DatabaseClient {
         );
         persistState();
         return { count: before - state.aiUsageEvents.length };
+      },
+    },
+
+    anonymousQuery: {
+      async create({ data }: Row) {
+        if (state.anonymousQueries.some((item) => item.publicReference === data.publicReference)) {
+          throw uniqueError("Anonymous query reference already exists");
+        }
+        if (state.anonymousQueries.some((item) => item.accessTokenHash === data.accessTokenHash)) {
+          throw uniqueError("Anonymous query token already exists");
+        }
+        const query = {
+          id: randomUUID(),
+          status: "OPEN",
+          assignedRole: null,
+          closedAt: null,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.anonymousQueries.push(query);
+        persistState();
+        return query;
+      },
+      async findFirst({ where = {} }: Row = {}) {
+        return state.anonymousQueries.find((query) => {
+          if (where.id && query.id !== where.id) return false;
+          if (where.schoolId && query.schoolId !== where.schoolId) return false;
+          if (where.groupId && query.groupId !== where.groupId) return false;
+          if (where.publicReference && query.publicReference !== where.publicReference) return false;
+          if (where.accessTokenHash && query.accessTokenHash !== where.accessTokenHash) return false;
+          return true;
+        }) ?? null;
+      },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const queries = state.anonymousQueries.filter((query) => {
+          if (where.schoolId && query.schoolId !== where.schoolId) return false;
+          if (typeof where.groupId === "string" && query.groupId !== where.groupId) return false;
+          if (where.groupId?.in && !where.groupId.in.includes(query.groupId)) return false;
+          if (where.status && query.status !== where.status) return false;
+          return true;
+        });
+        if (orderBy?.createdAt === "desc") {
+          queries.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+        }
+        return queries;
+      },
+      async update({ where, data }: Row) {
+        const query = state.anonymousQueries.find((item) => item.id === where.id);
+        if (!query) throw new Error("Anonymous query not found");
+        Object.assign(query, data, { updatedAt: now() });
+        persistState();
+        return query;
+      },
+    },
+
+    anonymousQueryMessage: {
+      async create({ data }: Row) {
+        const message = { id: randomUUID(), createdAt: now(), ...data };
+        state.anonymousQueryMessages.push(message);
+        persistState();
+        return message;
+      },
+      async findMany({ where, orderBy }: Row) {
+        const messages = state.anonymousQueryMessages.filter(
+          (message) => !where?.queryId || message.queryId === where.queryId,
+        );
+        if (orderBy?.createdAt === "asc") {
+          messages.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+        }
+        return messages;
       },
     },
 
