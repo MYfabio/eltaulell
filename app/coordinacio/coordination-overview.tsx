@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  LEARNING_TASKS,
-  STUDENT_INSIGHTS,
-  SUBJECT_INSIGHTS,
-} from "@/lib/demo-insights";
+import type { LearningDashboard } from "@/lib/learning-types";
 
 const ALL = "ALL";
 
@@ -14,35 +10,33 @@ function unique(values: string[]) {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right, "ca"));
 }
 
-export default function CoordinationOverview() {
+export default function CoordinationOverview({ dashboard }: { dashboard: LearningDashboard }) {
   const [stage, setStage] = useState(ALL);
   const [group, setGroup] = useState(ALL);
   const [subject, setSubject] = useState(ALL);
   const [tutor, setTutor] = useState(ALL);
   const [studentQuery, setStudentQuery] = useState("");
 
-  const stages = useMemo(() => unique(STUDENT_INSIGHTS.map((student) => student.stage)), []);
-  const groups = useMemo(() => unique(STUDENT_INSIGHTS.map((student) => student.group)), []);
-  const tutors = useMemo(() => unique(STUDENT_INSIGHTS.map((student) => student.tutor)), []);
+  const stages = useMemo(() => unique(dashboard.students.map((student) => student.stage)), [dashboard.students]);
+  const groups = useMemo(() => unique(dashboard.students.map((student) => student.group)), [dashboard.students]);
+  const tutors = useMemo(() => unique(dashboard.students.map((student) => student.tutor)), [dashboard.students]);
 
   const filteredStudents = useMemo(() => {
     const query = studentQuery.trim().toLocaleLowerCase("ca");
-    return STUDENT_INSIGHTS.filter((student) => {
+    return dashboard.students.filter((student) => {
       if (stage !== ALL && student.stage !== stage) return false;
       if (group !== ALL && student.group !== group) return false;
       if (tutor !== ALL && student.tutor !== tutor) return false;
       if (query && !student.name.toLocaleLowerCase("ca").includes(query)) return false;
       if (
         subject !== ALL &&
-        !LEARNING_TASKS.some(
-          (task) => task.studentId === student.id && task.subject === subject,
-        )
+        !student.subjects.includes(subject)
       ) {
         return false;
       }
       return true;
     });
-  }, [group, stage, studentQuery, subject, tutor]);
+  }, [dashboard.students, group, stage, studentQuery, subject, tutor]);
 
   const averageProgress = filteredStudents.length
     ? Math.round(
@@ -88,7 +82,7 @@ export default function CoordinationOverview() {
           Assignatura
           <select value={subject} onChange={(event) => setSubject(event.target.value)}>
             <option value={ALL}>Totes les matèries</option>
-            {SUBJECT_INSIGHTS.map((item) => (
+            {dashboard.subjects.map((item) => (
               <option key={item.subject}>{item.subject}</option>
             ))}
           </select>

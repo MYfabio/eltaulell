@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isConfiguredCentreAdminEmail } from "@/lib/centre-admin-auth";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { issueDemoRequestInvitation } from "@/lib/demo-requests";
+import { sendInvitationEmail } from "@/lib/email";
 
 function requestOrigins(request: NextRequest) {
   const origins = new Set([request.nextUrl.origin]);
@@ -33,5 +34,14 @@ export async function POST(
       : "No s'ha pogut preparar l'accés a la demo.";
     return NextResponse.json({ error }, { status });
   }
-  return NextResponse.json(result, { status: 201 });
+  await sendInvitationEmail({
+    to: result.recipient,
+    schoolName: result.schoolName,
+    activationUrl: new URL(result.activationPath, process.env.APP_BASE_URL || request.nextUrl.origin).toString(),
+    userId: result.userId,
+  });
+  return NextResponse.json(
+    { activationPath: result.activationPath, expiresAt: result.expiresAt },
+    { status: 201 },
+  );
 }

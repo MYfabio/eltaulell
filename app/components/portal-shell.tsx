@@ -5,7 +5,7 @@ import { can, PERMISSIONS } from "@/lib/permissions";
 
 type PortalShellProps = {
   viewer: DemoViewer;
-  active: "board" | "coordination" | "tutoring" | "student" | "integrations";
+  active: "board" | "coordination" | "tutoring" | "student" | "calendar" | "queries" | "integrations";
   eyebrow: string;
   title: string;
   description: string;
@@ -55,6 +55,14 @@ export default function PortalShell({
               El meu espai
             </Link>
           )}
+          <Link className={active === "calendar" ? "active" : ""} href="/calendari">
+            Calendari
+          </Link>
+          {can(viewer, PERMISSIONS.SUBMIT_ANONYMOUS_QUERY) && (
+            <Link className={active === "queries" ? "active" : ""} href="/consultes">
+              Consultes
+            </Link>
+          )}
           {can(viewer, PERMISSIONS.MANAGE_INTEGRATIONS) && (
             <Link
               className={active === "integrations" ? "active" : ""}
@@ -83,6 +91,7 @@ export default function PortalShell({
       </section>
 
       <div className="portal-content">{children}</div>
+      <footer className="portal-legal"><Link href="/privacitat">Privacitat</Link><Link href="/termes">Termes d'ús</Link></footer>
     </main>
   );
 }

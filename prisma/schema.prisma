@@ -53,7 +53,9 @@ enum BoardPollStatus {
 
 enum IntegrationProvider {
   GOOGLE_CLASSROOM
+  GOOGLE_CALENDAR
   MOODLE
+  IEDUCA
 }
 
 enum IntegrationStatus {
@@ -73,72 +75,129 @@ enum DemoRequestStatus {
   CLOSED
 }
 
+enum LearningTaskStatus {
+  PENDING
+  IN_PROGRESS
+  DELIVERED
+  GRADED
+}
+
+enum AiRiskLevel {
+  NONE
+  CONCERN
+  URGENT
+}
+
+enum AnonymousQueryStatus {
+  OPEN
+  ASSIGNED
+  CLOSED
+}
+
+enum AnonymousMessageAuthor {
+  STUDENT_ANONYMOUS
+  TUTOR
+  COORDINATOR
+  SYSTEM
+}
+
+enum SyncJobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  ERROR
+}
+
+enum SyncDirection {
+  PULL
+  PUSH
+  BIDIRECTIONAL
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model School {
-  id               String                  @id @default(cuid())
-  name             String
-  slug             String                  @unique
-  emailDomain      String?
-  moodleBaseUrl    String?
-  active           Boolean                 @default(true)
-  plan             SchoolPlan              @default(PILOT)
-  maxUsers         Int                     @default(500)
-  maxGroups        Int                     @default(30)
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
-  memberships      SchoolMembership[]
-  groups           Group[]
-  integrations     IntegrationConnection[]
-  invitations      Invitation[]
-  groupInvites     GroupInvite[]
-  calendarEvents   CalendarEvent[]
-  auditLogs        AuditLog[]
+  id                String                  @id @default(cuid())
+  name              String
+  slug              String                  @unique
+  emailDomain       String?
+  moodleBaseUrl     String?
+  active            Boolean                 @default(true)
+  plan              SchoolPlan              @default(PILOT)
+  maxUsers          Int                     @default(500)
+  maxGroups         Int                     @default(30)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  memberships       SchoolMembership[]
+  groups            Group[]
+  integrations      IntegrationConnection[]
+  invitations       Invitation[]
+  groupInvites      GroupInvite[]
+  calendarEvents    CalendarEvent[]
+  auditLogs         AuditLog[]
   platformAuditLogs PlatformAuditLog[]
+  learningTasks     LearningTask[]
+  aiUsageEvents     AiUsageEvent[]
+  anonymousQueries  AnonymousQuery[]
+  externalResources ExternalResource[]
+  syncJobs          IntegrationSyncJob[]
+  errorLogs         SystemErrorLog[]
+  retentionPolicy   DataRetentionPolicy?
 }
 
 model User {
-  id               String            @id @default(cuid())
-  name             String
-  email            String            @unique
-  image            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  memberships      SchoolMembership[]
-  posts            PostIt[]
-  pollsCreated     BoardPoll[]       @relation("PollCreatedBy")
-  pollsValidated   BoardPoll[]       @relation("PollValidatedBy")
-  pollVotes        BoardPollVote[]
-  boardAttachments BoardAttachment[]
-  oauthAccounts    OAuthAccount[]
-  sessions         Session[]
-  acceptedInvites  Invitation[]      @relation("AcceptedInvitation")
-  groupInvitesCreated GroupInvite[]  @relation("GroupInviteCreatedBy")
-  auditLogs        AuditLog[]
-  platformAdmin    PlatformAdmin?
-  passwordCredential PasswordCredential?
+  id                  String                  @id @default(cuid())
+  name                String
+  email               String                  @unique
+  image               String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  memberships         SchoolMembership[]
+  posts               PostIt[]
+  pollsCreated        BoardPoll[]             @relation("PollCreatedBy")
+  pollsValidated      BoardPoll[]             @relation("PollValidatedBy")
+  pollVotes           BoardPollVote[]
+  boardAttachments    BoardAttachment[]
+  oauthAccounts       OAuthAccount[]
+  sessions            Session[]
+  acceptedInvites     Invitation[]            @relation("AcceptedInvitation")
+  groupInvitesCreated GroupInvite[]           @relation("GroupInviteCreatedBy")
+  auditLogs           AuditLog[]
+  platformAdmin       PlatformAdmin?
+  passwordCredential  PasswordCredential?
+  passwordResetTokens PasswordResetToken[]
+  queryReplies        AnonymousQueryMessage[]
+  emailDeliveries     EmailDelivery[]
 }
 
 model PasswordCredential {
-  id             String   @id @default(cuid())
-  userId         String   @unique
+  id             String    @id @default(cuid())
+  userId         String    @unique
   passwordHash   String
-  failedAttempts Int      @default(0)
+  failedAttempts Int       @default(0)
   lockedUntil    DateTime?
-  passwordSetAt  DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordSetAt  DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([lockedUntil])
 }
 
 model PlatformAdmin {
-  id        String             @id @default(cuid())
-  userId    String             @unique
-  active    Boolean            @default(true)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  auditLogs PlatformAuditLog[]
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs   PlatformAuditLog[]
+  mfaEnabled  Boolean            @default(true)
+  lastLoginAt DateTime?
 }
 
 model PlatformAuditLog {
@@ -187,6 +246,8 @@ model SchoolMembership {
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   groupMemberships GroupMembership[]
   sessions         Session[]
+  learningTasks    LearningTask[]
+  aiUsageEvents    AiUsageEvent[]
 
   @@unique([schoolId, userId])
   @@index([schoolId, role])
@@ -194,33 +255,37 @@ model SchoolMembership {
 }
 
 model Group {
-  id               String             @id @default(cuid())
+  id               String            @id @default(cuid())
   schoolId         String
   name             String
   stage            String
   section          String?
   academicYear     String
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  school           School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  school           School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   members          GroupMembership[]
   board            Board?
   calendarEvents   CalendarEvent[]
   externalCourses  ExternalCourse[]
   invites          GroupInvite[]
+  learningTasks    LearningTask[]
+  aiUsageEvents    AiUsageEvent[]
+  anonymousQueries AnonymousQuery[]
+  externalResources ExternalResource[]
 
   @@unique([schoolId, academicYear, name])
   @@index([schoolId])
 }
 
 model GroupMembership {
-  id                 String            @id @default(cuid())
+  id                 String           @id @default(cuid())
   groupId            String
   schoolMembershipId String
   role               GroupMemberRole
-  createdAt          DateTime          @default(now())
-  group              Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  schoolMembership   SchoolMembership  @relation(fields: [schoolMembershipId], references: [id], onDelete: Cascade)
+  createdAt          DateTime         @default(now())
+  group              Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  schoolMembership   SchoolMembership @relation(fields: [schoolMembershipId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, schoolMembershipId])
   @@index([schoolMembershipId])
@@ -308,75 +373,219 @@ model BoardPollVote {
 }
 
 model BoardAttachment {
-  id             String   @id @default(cuid())
-  boardId        String
-  fileName       String
-  mimeType       String
-  sizeBytes      Int
-  caption        String?
-  storageKey     String?  @unique
-  storageProvider String  @default("POSTGRESQL")
-  content        Bytes?
-  uploadedById   String?
-  uploadedByRole String
-  createdAt      DateTime @default(now())
-  board          Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  uploadedBy     User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  id              String   @id @default(cuid())
+  boardId         String
+  fileName        String
+  mimeType        String
+  sizeBytes       Int
+  caption         String?
+  storageKey      String?  @unique
+  storageProvider String   @default("POSTGRESQL")
+  content         Bytes?
+  uploadedById    String?
+  uploadedByRole  String
+  createdAt       DateTime @default(now())
+  board           Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  uploadedBy      User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([boardId, createdAt])
   @@index([uploadedById])
 }
 
 model CalendarEvent {
-  id         String               @id @default(cuid())
-  schoolId   String
-  groupId    String?
-  title      String
+  id          String               @id @default(cuid())
+  schoolId    String
+  groupId     String?
+  title       String
   description String?
-  startsAt   DateTime
-  endsAt     DateTime?
-  provider   IntegrationProvider?
-  externalId String?
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
-  school     School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  group      Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  startsAt    DateTime
+  endsAt      DateTime?
+  provider    IntegrationProvider?
+  externalId  String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group       Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, startsAt])
   @@index([groupId, startsAt])
 }
 
+model LearningTask {
+  id                   String               @id @default(cuid())
+  schoolId             String
+  groupId              String
+  studentMembershipId  String
+  externalCourseId     String?
+  provider             IntegrationProvider?
+  externalId           String?
+  externalSubmissionId String?
+  title                String
+  description          String?
+  subject              String
+  status               LearningTaskStatus   @default(PENDING)
+  dueAt                DateTime?
+  openedAt             DateTime?
+  deliveredAt          DateTime?
+  gradedAt             DateTime?
+  grade                Float?
+  maximumGrade         Float?
+  teacherFeedback      String?
+  resourceUrl          String?
+  lastSyncedAt         DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  school               School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group                Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  studentMembership    SchoolMembership     @relation(fields: [studentMembershipId], references: [id], onDelete: Cascade)
+  externalCourse       ExternalCourse?      @relation(fields: [externalCourseId], references: [id], onDelete: SetNull)
+
+  @@unique([studentMembershipId, provider, externalId])
+  @@index([schoolId, groupId, status])
+  @@index([studentMembershipId, dueAt])
+  @@index([provider, externalSubmissionId])
+}
+
+model AiUsageEvent {
+  id                  String           @id @default(cuid())
+  schoolId            String
+  groupId             String
+  studentMembershipId String
+  sessionKeyHash      String
+  subject             String?
+  taskId              String?
+  questionCount       Int              @default(1)
+  durationSeconds     Int              @default(0)
+  repeatedHelpSignal  Boolean          @default(false)
+  riskLevel           AiRiskLevel      @default(NONE)
+  createdAt           DateTime         @default(now())
+  school              School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group               Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  studentMembership   SchoolMembership @relation(fields: [studentMembershipId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, groupId, createdAt])
+  @@index([studentMembershipId, createdAt])
+  @@index([sessionKeyHash, createdAt])
+}
+
+model AnonymousQuery {
+  id              String                  @id @default(cuid())
+  schoolId        String
+  groupId         String
+  publicReference String                  @unique
+  accessTokenHash String                  @unique
+  subject         String
+  status          AnonymousQueryStatus    @default(OPEN)
+  assignedRole    MembershipRole?
+  closedAt        DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  school          School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group           Group                   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  messages        AnonymousQueryMessage[]
+
+  @@index([schoolId, status, createdAt])
+  @@index([groupId, status, createdAt])
+}
+
+model AnonymousQueryMessage {
+  id          String                 @id @default(cuid())
+  queryId     String
+  authorKind  AnonymousMessageAuthor
+  responderId String?
+  body        String
+  createdAt   DateTime               @default(now())
+  query       AnonymousQuery         @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  responder   User?                  @relation(fields: [responderId], references: [id], onDelete: SetNull)
+
+  @@index([queryId, createdAt])
+  @@index([responderId])
+}
+
 model IntegrationConnection {
-  id               String              @id @default(cuid())
-  schoolId         String
-  provider         IntegrationProvider
-  status           IntegrationStatus   @default(DISCONNECTED)
-  baseUrl          String?
-  externalTenantId String?
-  settings         Json?
-  lastSyncedAt     DateTime?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  school           School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id                      String               @id @default(cuid())
+  schoolId                String
+  provider                IntegrationProvider
+  status                  IntegrationStatus    @default(DISCONNECTED)
+  baseUrl                 String?
+  externalTenantId        String?
+  settings                Json?
+  lastSyncedAt            DateTime?
+  accessTokenCiphertext   String?
+  refreshTokenCiphertext  String?
+  tokenExpiresAt          DateTime?
+  webhookSecretCiphertext String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  school                  School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  syncJobs                IntegrationSyncJob[]
 
   @@unique([schoolId, provider])
   @@index([status])
 }
 
 model ExternalCourse {
-  id           String              @id @default(cuid())
-  groupId      String
-  provider     IntegrationProvider
-  externalId   String
-  name         String
-  url          String?
-  lastSyncedAt DateTime?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  group        Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  id            String              @id @default(cuid())
+  groupId       String
+  provider      IntegrationProvider
+  externalId    String
+  name          String
+  url           String?
+  lastSyncedAt  DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  group         Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  learningTasks LearningTask[]
+  resources     ExternalResource[]
 
   @@unique([provider, externalId])
   @@index([groupId, provider])
+}
+
+model ExternalResource {
+  id               String              @id @default(cuid())
+  schoolId         String
+  groupId          String
+  externalCourseId String?
+  provider         IntegrationProvider
+  externalId       String
+  title            String
+  description      String?
+  resourceType     String
+  url              String?
+  metadata         Json?
+  lastSyncedAt     DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  school           School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group            Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  externalCourse   ExternalCourse?     @relation(fields: [externalCourseId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, externalId])
+  @@index([schoolId, groupId, provider])
+  @@index([externalCourseId])
+}
+
+model IntegrationSyncJob {
+  id             String                @id @default(cuid())
+  schoolId       String
+  connectionId   String
+  provider       IntegrationProvider
+  direction      SyncDirection         @default(PULL)
+  status         SyncJobStatus         @default(PENDING)
+  cursor         String?
+  processedCount Int                   @default(0)
+  errorCode      String?
+  errorMessage   String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  school         School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  connection     IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, provider, status])
+  @@index([connectionId, createdAt])
 }
 
 model OAuthAccount {
@@ -414,17 +623,17 @@ model Session {
 }
 
 model Invitation {
-  id           String          @id @default(cuid())
+  id           String         @id @default(cuid())
   schoolId     String
   email        String
   role         MembershipRole
-  tokenHash    String          @unique
+  tokenHash    String         @unique
   expiresAt    DateTime
   acceptedAt   DateTime?
   acceptedById String?
-  createdAt    DateTime        @default(now())
-  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  acceptedBy   User?           @relation("AcceptedInvitation", fields: [acceptedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime       @default(now())
+  school       School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  acceptedBy   User?          @relation("AcceptedInvitation", fields: [acceptedById], references: [id], onDelete: SetNull)
 
   @@index([schoolId, email])
 }
@@ -464,4 +673,61 @@ model AuditLog {
 
   @@index([schoolId, createdAt])
   @@index([actorId])
+}
+
+model EmailDelivery {
+  id           String              @id @default(cuid())
+  userId       String?
+  recipient    String
+  template     String
+  subject      String
+  status       EmailDeliveryStatus @default(PENDING)
+  providerId   String?
+  errorMessage String?
+  sentAt       DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([recipient, createdAt])
+  @@index([status, createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model DataRetentionPolicy {
+  id                   String   @id @default(cuid())
+  schoolId             String   @unique
+  taskRetentionDays    Int      @default(730)
+  aiUsageRetentionDays Int      @default(90)
+  queryRetentionDays   Int      @default(365)
+  auditRetentionDays   Int      @default(730)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  school               School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
+
+model SystemErrorLog {
+  id        String   @id @default(cuid())
+  schoolId  String?
+  requestId String?
+  source    String
+  code      String
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  school    School?  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([code, createdAt])
 }

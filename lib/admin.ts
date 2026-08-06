@@ -84,6 +84,7 @@ export async function ensureDemoSchoolData(viewer: DemoViewer) {
     });
 
     const demoActorIds: Record<string, string> = {};
+    const demoMembershipIds: Record<string, string> = {};
     for (const demoPerson of DEMO_VIEWERS) {
       if (demoPerson.schoolSlug !== viewer.schoolSlug) continue;
 
@@ -113,6 +114,7 @@ export async function ensureDemoSchoolData(viewer: DemoViewer) {
           status: "ACTIVE",
         },
       });
+      demoMembershipIds[demoPerson.id] = membership.id;
 
       const groupRole = GROUP_ROLE[membership.role as AppRole];
       const assignedGroupCount = await transaction.groupMembership.count({
@@ -175,6 +177,64 @@ export async function ensureDemoSchoolData(viewer: DemoViewer) {
           boardId: board.id,
         },
       });
+    }
+
+    const studentMembershipId = demoMembershipIds["student-marc"];
+    if (studentMembershipId) {
+      const now = Date.now();
+      const demoTasks = [
+        {
+          id: `${viewer.schoolSlug}-task-functions`,
+          title: "Funcions · exercicis 12, 13 i 16",
+          subject: "Matemàtiques",
+          status: "IN_PROGRESS" as const,
+          dueAt: new Date(now + 24 * 60 * 60 * 1000),
+          provider: "GOOGLE_CLASSROOM" as const,
+          externalId: "demo-functions",
+        },
+        {
+          id: `${viewer.schoolSlug}-task-history`,
+          title: "Dossier de la Revolució Industrial",
+          subject: "Història",
+          status: "PENDING" as const,
+          dueAt: new Date(now + 3 * 24 * 60 * 60 * 1000),
+          provider: "GOOGLE_CLASSROOM" as const,
+          externalId: "demo-history",
+        },
+        {
+          id: `${viewer.schoolSlug}-task-lab`,
+          title: "Informe del laboratori de densitat",
+          subject: "Ciències",
+          status: "DELIVERED" as const,
+          deliveredAt: new Date(now - 2 * 60 * 60 * 1000),
+          provider: "GOOGLE_CLASSROOM" as const,
+          externalId: "demo-lab",
+        },
+        {
+          id: `${viewer.schoolSlug}-task-english`,
+          title: "Audio: My neighbourhood",
+          subject: "Anglès",
+          status: "GRADED" as const,
+          gradedAt: new Date(now - 24 * 60 * 60 * 1000),
+          grade: 8.5,
+          maximumGrade: 10,
+          teacherFeedback: "Molt bona pronunciació. Revisa el ritme de les dues últimes frases.",
+          provider: null,
+          externalId: null,
+        },
+      ];
+      for (const task of demoTasks) {
+        await transaction.learningTask.upsert({
+          where: { id: task.id },
+          update: {},
+          create: {
+            ...task,
+            schoolId: school.id,
+            groupId: group.id,
+            studentMembershipId,
+          },
+        });
+      }
     }
 
     return school;

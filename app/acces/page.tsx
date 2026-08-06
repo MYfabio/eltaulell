@@ -1,12 +1,12 @@
 import Link from "next/link";
 import {
   getDemoViewer,
-  getPlatformDemoViewer,
   isDemoAccessEnabled,
   isPlatformDemoEnabled,
   PLATFORM_DEMO_ADMIN,
 } from "@/lib/demo-auth";
 import { isCentreAdminLoginConfigured } from "@/lib/centre-admin-auth";
+import { getPlatformViewer, isPlatformAdminConfigured } from "@/lib/platform-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +16,25 @@ export default async function AccessPage({
   searchParams: Promise<{
     error?: string | string[];
     accountError?: string | string[];
+    platformError?: string | string[];
+    reset?: string | string[];
   }>;
 }) {
   const currentViewer = await getDemoViewer();
-  const currentPlatformViewer = await getPlatformDemoViewer();
+  const currentPlatformViewer = await getPlatformViewer();
   const demoAccessEnabled = isDemoAccessEnabled();
   const platformAdminEnabled = isPlatformDemoEnabled();
+  const platformAdminConfigured = isPlatformAdminConfigured();
   const centreAdminEnabled = isCentreAdminLoginConfigured();
   const params = await searchParams;
   const loginError = Array.isArray(params.error) ? params.error[0] : params.error;
   const accountError = Array.isArray(params.accountError)
     ? params.accountError[0]
     : params.accountError;
+  const platformError = Array.isArray(params.platformError)
+    ? params.platformError[0]
+    : params.platformError;
+  const passwordReset = Array.isArray(params.reset) ? params.reset[0] : params.reset;
 
   return (
     <main className="access-page">
@@ -87,6 +94,9 @@ export default async function AccessPage({
           </p>
         </div>
         <form action="/api/auth/account" method="post">
+          {passwordReset === "success" && (
+            <p className="current-session" role="status">Contrasenya actualitzada. Ja pots iniciar sessió.</p>
+          )}
           <label>
             Correu electrònic
             <input autoComplete="username" name="email" required type="email" />
@@ -122,14 +132,43 @@ export default async function AccessPage({
             </p>
           )}
           <button type="submit">Entrar</button>
+          <Link href="/recuperar-contrasenya">He oblidat la contrasenya</Link>
         </form>
       </section>
 
-      {platformAdminEnabled && (
+      {platformAdminConfigured && (
+        <section className="platform-access-card">
+          <div className="platform-access-avatar">SA</div>
+          <div>
+            <span>SUPERADMIN · AUTENTICACIÓ REFORÇADA</span>
+            <h2>Administració general de la plataforma</h2>
+            <p>Accés protegit amb contrasenya, codi temporal TOTP, bloqueig d'intents i sessió revocable.</p>
+          </div>
+          <form action="/api/auth/platform" method="post">
+            <label>Correu electrònic<input autoComplete="username" name="email" required type="email" /></label>
+            <label>Contrasenya<input autoComplete="current-password" name="password" required type="password" /></label>
+            <label>Codi de 6 dígits<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} name="totp" pattern="[0-9]{6}" required /></label>
+            {platformError && (
+              <p className="centre-admin-login-error" role="alert">
+                {platformError === "locked"
+                  ? "Accés bloquejat temporalment per massa intents."
+                  : platformError === "ip"
+                    ? "Aquesta xarxa no està autoritzada."
+                    : platformError === "config"
+                      ? "La compte SuperAdmin encara no està configurada."
+                      : "Credencials o codi temporal incorrectes."}
+              </p>
+            )}
+            <button type="submit">Entrar com a SuperAdmin</button>
+          </form>
+        </section>
+      )}
+
+      {platformAdminEnabled && !platformAdminConfigured && (
         <section className="platform-access-card">
           <div className="platform-access-avatar">{PLATFORM_DEMO_ADMIN.initials}</div>
           <div>
-            <span>ADMINISTRACIÓ GENERAL · NOMÉS LOCAL</span>
+            <span>ADMINISTRACIÓ GENERAL · DEMO LOCAL</span>
             <h2>Gestiona els centres de la plataforma</h2>
             <p>
               Crea centres, assigna la primera coordinació, defineix límits i

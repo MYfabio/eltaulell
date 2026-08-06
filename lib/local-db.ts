@@ -8,8 +8,8 @@ type DbMethod = (args: any) => Promise<any>;
 
 export interface DatabaseClient {
   $transaction<T>(operation: (transaction: DatabaseClient) => Promise<T>): Promise<T>;
-  auditLog: { create: DbMethod };
-  platformAdmin: { upsert: DbMethod };
+  auditLog: { create: DbMethod; deleteMany: DbMethod; findMany: DbMethod };
+  platformAdmin: { findFirst: DbMethod; upsert: DbMethod };
   platformAuditLog: { create: DbMethod; findMany: DbMethod };
   demoRequest: {
     create: DbMethod;
@@ -17,6 +17,58 @@ export interface DatabaseClient {
     findMany: DbMethod;
     findUnique: DbMethod;
     update: DbMethod;
+  };
+  learningTask: {
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    updateMany: DbMethod;
+    upsert: DbMethod;
+  };
+  aiUsageEvent: {
+    count: DbMethod;
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findMany: DbMethod;
+  };
+  anonymousQuery: {
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    update: DbMethod;
+  };
+  anonymousQueryMessage: { create: DbMethod; findMany: DbMethod };
+  integrationConnection: {
+    findFirst: DbMethod;
+    update: DbMethod;
+    upsert: DbMethod;
+  };
+  integrationSyncJob: { create: DbMethod; update: DbMethod };
+  externalCourse: { findMany: DbMethod; upsert: DbMethod };
+  externalResource: { findMany: DbMethod; upsert: DbMethod };
+  oauthAccount: { findFirst: DbMethod; upsert: DbMethod };
+  calendarEvent: {
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findFirst: DbMethod;
+    findMany: DbMethod;
+    update: DbMethod;
+  };
+  emailDelivery: { create: DbMethod; update: DbMethod };
+  passwordResetToken: {
+    create: DbMethod;
+    findUnique: DbMethod;
+    update: DbMethod;
+    updateMany: DbMethod;
+  };
+  dataRetentionPolicy: { findMany: DbMethod; upsert: DbMethod };
+  systemErrorLog: {
+    count: DbMethod;
+    create: DbMethod;
+    deleteMany: DbMethod;
+    findMany: DbMethod;
   };
   board: { findMany: DbMethod; upsert: DbMethod };
   postIt: {
@@ -42,7 +94,7 @@ export interface DatabaseClient {
     updateMany: DbMethod;
   };
   boardPollVote: { create: DbMethod };
-  group: { create: DbMethod; findFirst: DbMethod; upsert: DbMethod };
+  group: { create: DbMethod; findFirst: DbMethod; findMany: DbMethod; upsert: DbMethod };
   groupMembership: {
     count: DbMethod;
     create: DbMethod;
@@ -87,6 +139,7 @@ export interface DatabaseClient {
   };
   session: {
     create: DbMethod;
+    findMany: DbMethod;
     findUnique: DbMethod;
     update: DbMethod;
     updateMany: DbMethod;
@@ -114,6 +167,20 @@ type LocalState = {
   sessions: Row[];
   users: Row[];
   votes: Row[];
+  learningTasks: Row[];
+  aiUsageEvents: Row[];
+  anonymousQueries: Row[];
+  anonymousQueryMessages: Row[];
+  integrationConnections: Row[];
+  syncJobs: Row[];
+  externalCourses: Row[];
+  externalResources: Row[];
+  oauthAccounts: Row[];
+  calendarEvents: Row[];
+  emailDeliveries: Row[];
+  passwordResetTokens: Row[];
+  retentionPolicies: Row[];
+  systemErrorLogs: Row[];
 };
 
 function makeState(): LocalState {
@@ -137,6 +204,20 @@ function makeState(): LocalState {
     sessions: [],
     users: [],
     votes: [],
+    learningTasks: [],
+    aiUsageEvents: [],
+    anonymousQueries: [],
+    anonymousQueryMessages: [],
+    integrationConnections: [],
+    syncJobs: [],
+    externalCourses: [],
+    externalResources: [],
+    oauthAccounts: [],
+    calendarEvents: [],
+    emailDeliveries: [],
+    passwordResetTokens: [],
+    retentionPolicies: [],
+    systemErrorLogs: [],
   };
 }
 
@@ -373,9 +454,20 @@ export function createLocalDb(): DatabaseClient {
     },
 
     platformAdmin: {
-      async upsert({ where, create }: Row) {
+      async findFirst({ where }: Row) {
+        return state.platformAdmins.find((admin) => {
+          if (where.userId && admin.userId !== where.userId) return false;
+          if (typeof where.active === "boolean" && admin.active !== where.active) return false;
+          return true;
+        }) ?? null;
+      },
+      async upsert({ where, create, update }: Row) {
         const existing = state.platformAdmins.find((admin) => admin.userId === where.userId);
-        if (existing) return existing;
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
         const admin = {
           id: randomUUID(),
           active: true,
@@ -384,6 +476,7 @@ export function createLocalDb(): DatabaseClient {
           ...create,
         };
         state.platformAdmins.push(admin);
+        persistState();
         return admin;
       },
     },
@@ -431,6 +524,24 @@ export function createLocalDb(): DatabaseClient {
           where.id ? candidate.id === where.id : candidate.tokenHash === where.tokenHash,
         );
         return session ? sessionResult(session) : null;
+      },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const sessions = state.sessions.filter((session) => {
+          if (
+            where.schoolMembershipId?.in &&
+            !where.schoolMembershipId.in.includes(session.schoolMembershipId)
+          ) {
+            return false;
+          }
+          if (where.revokedAt === null && session.revokedAt !== null) return false;
+          return true;
+        });
+        if (orderBy?.lastSeenAt === "desc") {
+          sessions.sort(
+            (left, right) => right.lastSeenAt.getTime() - left.lastSeenAt.getTime(),
+          );
+        }
+        return sessions;
       },
       async update({ where, data }: Row) {
         const session = state.sessions.find((candidate) => candidate.id === where.id);
@@ -557,6 +668,519 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
+    learningTask: {
+      async upsert({ where, create, update }: Row) {
+        const existing = state.learningTasks.find((task) =>
+          where.id
+            ? task.id === where.id
+            : task.studentMembershipId === where.studentMembershipId_provider_externalId?.studentMembershipId
+              && task.provider === where.studentMembershipId_provider_externalId?.provider
+              && task.externalId === where.studentMembershipId_provider_externalId?.externalId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const task = {
+          id: create.id ?? randomUUID(),
+          status: "PENDING",
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.learningTasks.push(task);
+        persistState();
+        return task;
+      },
+      async create({ data }: Row) {
+        const task = {
+          id: data.id ?? randomUUID(),
+          status: "PENDING",
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.learningTasks.push(task);
+        persistState();
+        return task;
+      },
+      async findFirst({ where }: Row) {
+        return state.learningTasks.find((task) => {
+          if (where.id && task.id !== where.id) return false;
+          if (where.schoolId && task.schoolId !== where.schoolId) return false;
+          if (where.groupId && task.groupId !== where.groupId) return false;
+          if (where.studentMembershipId && task.studentMembershipId !== where.studentMembershipId) return false;
+          return true;
+        }) ?? null;
+      },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const tasks = state.learningTasks.filter((task) => {
+          if (where.schoolId && task.schoolId !== where.schoolId) return false;
+          if (typeof where.groupId === "string" && task.groupId !== where.groupId) return false;
+          if (where.groupId?.in && !where.groupId.in.includes(task.groupId)) return false;
+          if (typeof where.studentMembershipId === "string" && task.studentMembershipId !== where.studentMembershipId) return false;
+          if (where.studentMembershipId?.in && !where.studentMembershipId.in.includes(task.studentMembershipId)) return false;
+          if (where.status && task.status !== where.status) return false;
+          return true;
+        });
+        if (orderBy?.dueAt === "asc") {
+          tasks.sort((left, right) => (left.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER) - (right.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER));
+        }
+        return tasks;
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.learningTasks.length;
+        state.learningTasks = state.learningTasks.filter((task) => {
+          if (where.schoolId && task.schoolId !== where.schoolId) return true;
+          if (where.updatedAt?.lt && task.updatedAt >= where.updatedAt.lt) return true;
+          return false;
+        });
+        persistState();
+        return { count: before - state.learningTasks.length };
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.learningTasks.filter((task) => {
+          if (where.id && task.id !== where.id) return false;
+          if (where.schoolId && task.schoolId !== where.schoolId) return false;
+          if (where.studentMembershipId && task.studentMembershipId !== where.studentMembershipId) return false;
+          return true;
+        });
+        matches.forEach((task) => Object.assign(task, data, { updatedAt: now() }));
+        persistState();
+        return { count: matches.length };
+      },
+    },
+
+    aiUsageEvent: {
+      async create({ data }: Row) {
+        const event = { id: randomUUID(), createdAt: now(), ...data };
+        state.aiUsageEvents.push(event);
+        persistState();
+        return event;
+      },
+      async count({ where = {} }: Row = {}) {
+        return state.aiUsageEvents.filter((event) => {
+          if (where.studentMembershipId && event.studentMembershipId !== where.studentMembershipId) return false;
+          if (typeof where.groupId === "string" && event.groupId !== where.groupId) return false;
+          if (where.sessionKeyHash && event.sessionKeyHash !== where.sessionKeyHash) return false;
+          if (where.createdAt?.gte && event.createdAt < where.createdAt.gte) return false;
+          return true;
+        }).length;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.aiUsageEvents.filter((event) => {
+          if (where.schoolId && event.schoolId !== where.schoolId) return false;
+          if (typeof where.groupId === "string" && event.groupId !== where.groupId) return false;
+          if (where.groupId?.in && !where.groupId.in.includes(event.groupId)) return false;
+          if (where.studentMembershipId && event.studentMembershipId !== where.studentMembershipId) return false;
+          if (where.createdAt?.gte && event.createdAt < where.createdAt.gte) return false;
+          return true;
+        });
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.aiUsageEvents.length;
+        state.aiUsageEvents = state.aiUsageEvents.filter((event) => {
+          if (where.schoolId && event.schoolId !== where.schoolId) return true;
+          if (where.createdAt?.lt && event.createdAt >= where.createdAt.lt) return true;
+          return false;
+        });
+        persistState();
+        return { count: before - state.aiUsageEvents.length };
+      },
+    },
+
+    anonymousQuery: {
+      async create({ data }: Row) {
+        if (state.anonymousQueries.some((item) => item.publicReference === data.publicReference)) {
+          throw uniqueError("Anonymous query reference already exists");
+        }
+        if (state.anonymousQueries.some((item) => item.accessTokenHash === data.accessTokenHash)) {
+          throw uniqueError("Anonymous query token already exists");
+        }
+        const query = {
+          id: randomUUID(),
+          status: "OPEN",
+          assignedRole: null,
+          closedAt: null,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.anonymousQueries.push(query);
+        persistState();
+        return query;
+      },
+      async findFirst({ where = {} }: Row = {}) {
+        return state.anonymousQueries.find((query) => {
+          if (where.id && query.id !== where.id) return false;
+          if (where.schoolId && query.schoolId !== where.schoolId) return false;
+          if (where.groupId && query.groupId !== where.groupId) return false;
+          if (where.publicReference && query.publicReference !== where.publicReference) return false;
+          if (where.accessTokenHash && query.accessTokenHash !== where.accessTokenHash) return false;
+          return true;
+        }) ?? null;
+      },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const queries = state.anonymousQueries.filter((query) => {
+          if (where.schoolId && query.schoolId !== where.schoolId) return false;
+          if (typeof where.groupId === "string" && query.groupId !== where.groupId) return false;
+          if (where.groupId?.in && !where.groupId.in.includes(query.groupId)) return false;
+          if (where.status && query.status !== where.status) return false;
+          return true;
+        });
+        if (orderBy?.createdAt === "desc") {
+          queries.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+        }
+        return queries;
+      },
+      async update({ where, data }: Row) {
+        const query = state.anonymousQueries.find((item) => item.id === where.id);
+        if (!query) throw new Error("Anonymous query not found");
+        Object.assign(query, data, { updatedAt: now() });
+        persistState();
+        return query;
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const removedIds = state.anonymousQueries
+          .filter((query) => {
+            if (where.schoolId && query.schoolId !== where.schoolId) return false;
+            if (where.status && query.status !== where.status) return false;
+            if (where.closedAt?.lt && (!query.closedAt || query.closedAt >= where.closedAt.lt)) return false;
+            return true;
+          })
+          .map((query) => query.id);
+        state.anonymousQueries = state.anonymousQueries.filter((query) => !removedIds.includes(query.id));
+        state.anonymousQueryMessages = state.anonymousQueryMessages.filter((message) => !removedIds.includes(message.queryId));
+        persistState();
+        return { count: removedIds.length };
+      },
+    },
+
+    anonymousQueryMessage: {
+      async create({ data }: Row) {
+        const message = { id: randomUUID(), createdAt: now(), ...data };
+        state.anonymousQueryMessages.push(message);
+        persistState();
+        return message;
+      },
+      async findMany({ where, orderBy }: Row) {
+        const messages = state.anonymousQueryMessages.filter(
+          (message) => !where?.queryId || message.queryId === where.queryId,
+        );
+        if (orderBy?.createdAt === "asc") {
+          messages.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+        }
+        return messages;
+      },
+    },
+
+    integrationConnection: {
+      async findFirst({ where }: Row) {
+        return state.integrationConnections.find((connection) => {
+          if (where.id && connection.id !== where.id) return false;
+          if (where.schoolId && connection.schoolId !== where.schoolId) return false;
+          if (where.provider && connection.provider !== where.provider) return false;
+          if (where.status && connection.status !== where.status) return false;
+          return true;
+        }) ?? null;
+      },
+      async upsert({ where, create, update }: Row) {
+        const key = where.schoolId_provider;
+        const existing = state.integrationConnections.find(
+          (connection) => connection.schoolId === key.schoolId && connection.provider === key.provider,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const connection = {
+          id: randomUUID(),
+          status: "DISCONNECTED",
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.integrationConnections.push(connection);
+        persistState();
+        return connection;
+      },
+      async update({ where, data }: Row) {
+        const connection = state.integrationConnections.find((item) => item.id === where.id);
+        if (!connection) throw new Error("Integration connection not found");
+        Object.assign(connection, data, { updatedAt: now() });
+        persistState();
+        return connection;
+      },
+    },
+
+    integrationSyncJob: {
+      async create({ data }: Row) {
+        const job = {
+          id: randomUUID(),
+          status: "PENDING",
+          processedCount: 0,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.syncJobs.push(job);
+        persistState();
+        return job;
+      },
+      async update({ where, data }: Row) {
+        const job = state.syncJobs.find((item) => item.id === where.id);
+        if (!job) throw new Error("Sync job not found");
+        Object.assign(job, data, { updatedAt: now() });
+        persistState();
+        return job;
+      },
+    },
+
+    externalCourse: {
+      async upsert({ where, create, update }: Row) {
+        const key = where.provider_externalId;
+        const existing = state.externalCourses.find(
+          (course) => course.provider === key.provider && course.externalId === key.externalId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const course = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...create };
+        state.externalCourses.push(course);
+        persistState();
+        return course;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.externalCourses.filter((course) => {
+          if (where.groupId && course.groupId !== where.groupId) return false;
+          if (where.provider && course.provider !== where.provider) return false;
+          return true;
+        });
+      },
+    },
+
+    externalResource: {
+      async upsert({ where, create, update }: Row) {
+        const key = where.provider_externalId;
+        const existing = state.externalResources.find(
+          (resource) => resource.provider === key.provider && resource.externalId === key.externalId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const resource = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...create };
+        state.externalResources.push(resource);
+        persistState();
+        return resource;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.externalResources.filter((resource) => {
+          if (where.schoolId && resource.schoolId !== where.schoolId) return false;
+          if (where.groupId && resource.groupId !== where.groupId) return false;
+          if (where.provider && resource.provider !== where.provider) return false;
+          return true;
+        });
+      },
+    },
+
+    oauthAccount: {
+      async findFirst({ where }: Row) {
+        return state.oauthAccounts.find((account) => {
+          if (where.userId && account.userId !== where.userId) return false;
+          if (where.provider && account.provider !== where.provider) return false;
+          return true;
+        }) ?? null;
+      },
+      async upsert({ where, create, update }: Row) {
+        const key = where.provider_providerAccountId;
+        const existing = state.oauthAccounts.find(
+          (account) => account.provider === key.provider && account.providerAccountId === key.providerAccountId,
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const account = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...create };
+        state.oauthAccounts.push(account);
+        persistState();
+        return account;
+      },
+    },
+
+    calendarEvent: {
+      async findFirst({ where }: Row) {
+        return state.calendarEvents.find((event) => {
+          if (where.id && event.id !== where.id) return false;
+          if (where.schoolId && event.schoolId !== where.schoolId) return false;
+          if (where.provider && event.provider !== where.provider) return false;
+          if (where.externalId && event.externalId !== where.externalId) return false;
+          return true;
+        }) ?? null;
+      },
+      async findMany({ where = {}, orderBy }: Row = {}) {
+        const events = state.calendarEvents.filter((event) => {
+          if (where.schoolId && event.schoolId !== where.schoolId) return false;
+          if (where.groupId && event.groupId !== where.groupId) return false;
+          if (where.provider === null && event.provider != null) return false;
+          if (typeof where.provider === "string" && event.provider !== where.provider) return false;
+          if (where.startsAt?.gte && event.startsAt < where.startsAt.gte) return false;
+          if (where.startsAt?.lte && event.startsAt > where.startsAt.lte) return false;
+          return true;
+        });
+        if (orderBy?.startsAt === "asc") events.sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime());
+        return events;
+      },
+      async create({ data }: Row) {
+        const event = { id: randomUUID(), createdAt: now(), updatedAt: now(), ...data };
+        state.calendarEvents.push(event);
+        persistState();
+        return event;
+      },
+      async update({ where, data }: Row) {
+        const event = state.calendarEvents.find((item) => item.id === where.id);
+        if (!event) throw new Error("Calendar event not found");
+        Object.assign(event, data, { updatedAt: now() });
+        persistState();
+        return event;
+      },
+      async deleteMany({ where }: Row) {
+        const before = state.calendarEvents.length;
+        state.calendarEvents = state.calendarEvents.filter((event) => {
+          if (where.id && event.id !== where.id) return true;
+          if (where.schoolId && event.schoolId !== where.schoolId) return true;
+          return false;
+        });
+        persistState();
+        return { count: before - state.calendarEvents.length };
+      },
+    },
+
+    emailDelivery: {
+      async create({ data }: Row) {
+        const delivery = {
+          id: randomUUID(),
+          status: "PENDING",
+          providerId: null,
+          errorMessage: null,
+          sentAt: null,
+          createdAt: now(),
+          updatedAt: now(),
+          ...data,
+        };
+        state.emailDeliveries.push(delivery);
+        persistState();
+        return delivery;
+      },
+      async update({ where, data }: Row) {
+        const delivery = state.emailDeliveries.find((item) => item.id === where.id);
+        if (!delivery) throw new Error("Email delivery not found");
+        Object.assign(delivery, data, { updatedAt: now() });
+        persistState();
+        return delivery;
+      },
+    },
+
+    passwordResetToken: {
+      async create({ data }: Row) {
+        const token = { id: randomUUID(), usedAt: null, createdAt: now(), ...data };
+        state.passwordResetTokens.push(token);
+        persistState();
+        return token;
+      },
+      async findUnique({ where, include }: Row) {
+        const token = state.passwordResetTokens.find((item) =>
+          where.id ? item.id === where.id : item.tokenHash === where.tokenHash,
+        );
+        if (!token) return null;
+        const user = state.users.find((item) => item.id === token.userId);
+        return include?.user ? { ...token, user } : token;
+      },
+      async update({ where, data }: Row) {
+        const token = state.passwordResetTokens.find((item) => item.id === where.id);
+        if (!token) throw new Error("Password reset token not found");
+        Object.assign(token, data);
+        persistState();
+        return token;
+      },
+      async updateMany({ where, data }: Row) {
+        const matches = state.passwordResetTokens.filter((item) => {
+          if (where.userId && item.userId !== where.userId) return false;
+          if (where.usedAt === null && item.usedAt !== null) return false;
+          return true;
+        });
+        matches.forEach((item) => Object.assign(item, data));
+        persistState();
+        return { count: matches.length };
+      },
+    },
+
+    dataRetentionPolicy: {
+      async upsert({ where, create, update }: Row) {
+        const existing = state.retentionPolicies.find((policy) => policy.schoolId === where.schoolId);
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: now() });
+          persistState();
+          return existing;
+        }
+        const policy = {
+          id: randomUUID(),
+          taskRetentionDays: 730,
+          aiUsageRetentionDays: 90,
+          queryRetentionDays: 365,
+          auditRetentionDays: 730,
+          createdAt: now(),
+          updatedAt: now(),
+          ...create,
+        };
+        state.retentionPolicies.push(policy);
+        persistState();
+        return policy;
+      },
+      async findMany() {
+        return state.retentionPolicies;
+      },
+    },
+
+    systemErrorLog: {
+      async create({ data }: Row) {
+        const entry = { id: randomUUID(), createdAt: now(), ...data };
+        state.systemErrorLogs.push(entry);
+        persistState();
+        return entry;
+      },
+      async count({ where = {} }: Row = {}) {
+        return state.systemErrorLogs.filter((entry) => {
+          if (where.schoolId && entry.schoolId !== where.schoolId) return false;
+          if (where.createdAt?.gte && entry.createdAt < where.createdAt.gte) return false;
+          return true;
+        }).length;
+      },
+      async findMany({ where = {}, orderBy, take }: Row = {}) {
+        const entries = state.systemErrorLogs.filter((entry) => {
+          if (where.schoolId && entry.schoolId !== where.schoolId) return false;
+          if (where.createdAt?.gte && entry.createdAt < where.createdAt.gte) return false;
+          return true;
+        });
+        if (orderBy?.createdAt === "desc") entries.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+        return typeof take === "number" ? entries.slice(0, take) : entries;
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.systemErrorLogs.length;
+        state.systemErrorLogs = state.systemErrorLogs.filter((entry) =>
+          !(where.createdAt?.lt && entry.createdAt < where.createdAt.lt),
+        );
+        persistState();
+        return { count: before - state.systemErrorLogs.length };
+      },
+    },
+
     invitation: {
       async create({ data }: Row) {
         if (state.invitations.some((invitation) => invitation.tokenHash === data.tokenHash)) {
@@ -651,11 +1275,14 @@ export function createLocalDb(): DatabaseClient {
           ) ?? null
         );
       },
-      async findMany({ where }: Row) {
+      async findMany({ where = {}, include }: Row = {}) {
         return state.memberships
           .filter((membership) => {
+            if (where.schoolId && membership.schoolId !== where.schoolId) return false;
             if (where.userId && membership.userId !== where.userId) return false;
             if (where.status && membership.status !== where.status) return false;
+            if (typeof where.role === "string" && membership.role !== where.role) return false;
+            if (where.role?.in && !where.role.in.includes(membership.role)) return false;
             const school = schoolById(membership.schoolId);
             if (where.school?.active !== undefined && school?.active !== where.school.active) {
               return false;
@@ -663,10 +1290,22 @@ export function createLocalDb(): DatabaseClient {
             if (where.school?.slug && school?.slug !== where.school.slug) return false;
             return true;
           })
-          .map((membership) => ({
-            ...membership,
-            school: schoolById(membership.schoolId),
-          }))
+          .map((membership) => {
+            const base: Row = {
+              ...membership,
+              school: schoolById(membership.schoolId),
+            };
+            if (include?.user) base.user = userById(membership.userId);
+            if (include?.groupMemberships) {
+              base.groupMemberships = state.groupMemberships
+                .filter((assignment) => assignment.schoolMembershipId === membership.id)
+                .map((assignment) => ({
+                  ...assignment,
+                  group: groupById(assignment.groupId),
+                }));
+            }
+            return base;
+          })
           .sort((left, right) =>
             String(left.school?.name || "").localeCompare(String(right.school?.name || "")),
           );
@@ -736,6 +1375,12 @@ export function createLocalDb(): DatabaseClient {
               && (!where.name || group.name === where.name),
           ) ?? null
         );
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.groups.filter((group) => {
+          if (where.schoolId && group.schoolId !== where.schoolId) return false;
+          return true;
+        });
       },
       async create({ data }: Row) {
         if (
@@ -869,21 +1514,36 @@ export function createLocalDb(): DatabaseClient {
         persistState();
         return assignment;
       },
-      async findMany({ where }: Row) {
+      async findMany({ where = {}, include, select }: Row) {
         return state.groupMemberships
-          .filter((membership) => membership.schoolMembershipId === where.schoolMembershipId)
+          .filter((membership) => {
+            if (where.schoolMembershipId && membership.schoolMembershipId !== where.schoolMembershipId) return false;
+            if (where.groupId && membership.groupId !== where.groupId) return false;
+            if (where.role && membership.role !== where.role) return false;
+            return true;
+          })
           .map((membership) => {
             const group = groupById(membership.groupId)!;
+            const schoolMembership = state.memberships.find(
+              (item) => item.id === membership.schoolMembershipId,
+            );
+            if (select?.group) {
+              return {
+                group: {
+                  id: group.id,
+                  name: group.name,
+                  schoolId: group.schoolId,
+                  board: boardByGroupId(group.id),
+                },
+              };
+            }
             return {
-              group: {
-                id: group.id,
-                name: group.name,
-                schoolId: group.schoolId,
-                board: boardByGroupId(group.id),
-              },
+              ...membership,
+              ...(include?.group ? { group } : {}),
+              ...(include?.schoolMembership ? { schoolMembership } : {}),
             };
           })
-          .sort((a, b) => a.group.name.localeCompare(b.group.name));
+          .sort((a, b) => (a.group?.name || "").localeCompare(b.group?.name || ""));
       },
       async deleteMany({ where }: Row) {
         const before = state.groupMemberships.length;
@@ -977,6 +1637,19 @@ export function createLocalDb(): DatabaseClient {
         const entry = { id: randomUUID(), createdAt: now(), ...data };
         state.auditLogs.push(entry);
         return entry;
+      },
+      async findMany({ where = {} }: Row = {}) {
+        return state.auditLogs.filter((entry) => !where.schoolId || entry.schoolId === where.schoolId);
+      },
+      async deleteMany({ where = {} }: Row = {}) {
+        const before = state.auditLogs.length;
+        state.auditLogs = state.auditLogs.filter((entry) => {
+          if (where.schoolId && entry.schoolId !== where.schoolId) return true;
+          if (where.createdAt?.lt && entry.createdAt >= where.createdAt.lt) return true;
+          return false;
+        });
+        persistState();
+        return { count: before - state.auditLogs.length };
       },
     },
 

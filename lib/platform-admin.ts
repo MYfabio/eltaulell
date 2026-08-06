@@ -4,8 +4,8 @@ import { db } from "@/lib/db";
 import {
   DEMO_VIEWERS,
   PLATFORM_DEMO_ADMIN,
-  type PlatformDemoViewer,
 } from "@/lib/demo-auth";
+import type { PlatformViewer } from "@/lib/platform-auth";
 import { ensureDemoSchoolData } from "@/lib/admin";
 import type {
   PlatformAuditEntry,
@@ -52,7 +52,7 @@ function auditDetail(action: string, metadata: unknown) {
   return "Canvi d'administració de plataforma";
 }
 
-export async function ensurePlatformDemoAdmin(viewer: PlatformDemoViewer) {
+export async function ensurePlatformAdmin(viewer: PlatformViewer) {
   const user = await db.user.upsert({
     where: { email: viewer.email.toLowerCase() },
     update: { name: viewer.name },
@@ -71,18 +71,21 @@ export async function ensurePlatformDemoAdmin(viewer: PlatformDemoViewer) {
 
 export async function ensurePlatformDemoData(viewer = PLATFORM_DEMO_ADMIN) {
   await ensureDemoSchoolData(DEMO_VIEWERS[0]);
-  return ensurePlatformDemoAdmin(viewer);
+  return ensurePlatformAdmin({ ...viewer, mode: "demo" });
 }
 
-export async function getPlatformAdminId(viewer: PlatformDemoViewer) {
-  const admin = await ensurePlatformDemoAdmin(viewer);
+export async function getPlatformAdminId(viewer: PlatformViewer) {
+  const admin = viewer.mode === "demo"
+    ? await ensurePlatformDemoData(viewer)
+    : await db.platformAdmin.findFirst({ where: { userId: viewer.id, active: true } });
+  if (!admin) throw new Error("PLATFORM_ADMIN_REQUIRED");
   return admin.id as string;
 }
 
 export async function getPlatformSnapshot(
-  viewer: PlatformDemoViewer,
+  viewer: PlatformViewer,
 ): Promise<PlatformSnapshot> {
-  await ensurePlatformDemoData(viewer);
+  if (viewer.mode === "demo") await ensurePlatformDemoData(viewer);
   const [schools, audit] = await Promise.all([
     db.school.findMany({
       orderBy: { createdAt: "desc" },

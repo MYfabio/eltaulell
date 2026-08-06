@@ -6,11 +6,10 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { BoardChoice, StoredBoardPost } from "@/lib/board-store";
 import {
   BOARD_THEMES,
-  tasksForStudent,
   type BoardTheme,
-  type LearningTask,
+  type LearningTaskItem,
   type TaskStatus,
-} from "@/lib/demo-insights";
+} from "@/lib/learning-types";
 import type { DemoViewer } from "@/lib/demo-auth";
 import {
   can,
@@ -62,47 +61,6 @@ function isCardPosition(value: unknown): value is CardPosition {
   const position = value as Partial<CardPosition>;
   return Number.isFinite(position.x) && Number.isFinite(position.y);
 }
-
-const initialNotes: Note[] = [
-  {
-    id: "1",
-    type: "Avisos",
-    title: "Sortida al Museu de la Ciència",
-    body: "Recordeu portar l’autorització signada abans de divendres.",
-    meta: "Marta · Tutora · fa 2 h",
-    color: "yellow",
-    icon: "🧪",
-  },
-  {
-    id: "2",
-    type: "Tasques",
-    title: "Matemàtiques · Funcions",
-    body: "Exercicis 12, 13 i 16. Repassa abans l’exemple de la pàgina 84.",
-    meta: "Classroom · Entrega demà",
-    color: "blue",
-    icon: "📐",
-    link: "Obrir a Classroom",
-  },
-  {
-    id: "3",
-    type: "Activitats",
-    title: "Torneig de futbol sala",
-    body: "Inscripcions obertes! Equips de 5 persones. Parleu amb la delegada.",
-    meta: "Laia · Delegada · avui",
-    color: "pink",
-    icon: "⚽",
-  },
-  {
-    id: "4",
-    type: "Materials",
-    title: "Guia del projecte d’Història",
-    body: "Ja teniu disponible la rúbrica i els materials de suport.",
-    meta: "Moodle · Actualitzat avui",
-    color: "green",
-    icon: "📚",
-    link: "Veure a Moodle",
-  },
-];
 
 const filters: Array<"Tot" | NoteType> = [
   "Tot",
@@ -169,17 +127,24 @@ const taskStatusLabels: Record<TaskStatus, string> = {
 
 export default function BoardClient({
   boards,
+  initialCalendarEvents,
+  initialLearningTasks,
   initialPosts,
   selectedBoard,
   viewer,
 }: {
   boards: BoardChoice[];
+  initialCalendarEvents: Array<{
+    id: string;
+    title: string;
+    startsAt: string;
+    source: string;
+  }>;
+  initialLearningTasks: LearningTaskItem[];
   initialPosts: StoredBoardPost[];
   selectedBoard: BoardChoice;
   viewer: DemoViewer;
 }) {
-  const taskOwnerId = viewer.id === "student-marc" ? "marc-costa" : viewer.id;
-  const taskStorageKey = `eltaulell-learning-tasks-${taskOwnerId}`;
   const cardPositionStorageKey =
     `eltaulell-card-positions-${viewer.id}-${selectedBoard.groupId}`;
   const canArrangeBoard = can(viewer, PERMISSIONS.ARRANGE_BOARD);
@@ -191,6 +156,8 @@ export default function BoardClient({
   const [chatOpen, setChatOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
+  const [assistantBusy, setAssistantBusy] = useState(false);
+  const [assistantTaskId, setAssistantTaskId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
@@ -199,11 +166,8 @@ export default function BoardClient({
   const [actionMessage, setActionMessage] = useState("");
   const [boardTheme, setBoardTheme] = useState<BoardTheme>("cork");
   const [resourcesOpen, setResourcesOpen] = useState(false);
-  const [learningTasks, setLearningTasks] = useState<LearningTask[]>(() =>
-    tasksForStudent(taskOwnerId),
-  );
+  const [learningTasks, setLearningTasks] = useState<LearningTaskItem[]>(initialLearningTasks);
   const [classroomNotice, setClassroomNotice] = useState("");
-  const [tasksHydrated, setTasksHydrated] = useState(false);
   const [feedbackTaskId, setFeedbackTaskId] = useState<string | null>(null);
   const [cardPositions, setCardPositions] = useState<Record<string, CardPosition>>({});
   const [loadedCardPositionKey, setLoadedCardPositionKey] = useState<string | null>(null);
@@ -272,25 +236,6 @@ export default function BoardClient({
   useEffect(() => {
     window.localStorage.setItem("eltaulell-board-theme", boardTheme);
   }, [boardTheme]);
-
-  useEffect(() => {
-    try {
-      const savedTasks = window.sessionStorage.getItem(taskStorageKey);
-      if (savedTasks) {
-        const parsedTasks = JSON.parse(savedTasks) as LearningTask[];
-        if (Array.isArray(parsedTasks)) setLearningTasks(parsedTasks);
-      }
-    } catch {
-      window.sessionStorage.removeItem(taskStorageKey);
-    } finally {
-      setTasksHydrated(true);
-    }
-  }, [taskStorageKey]);
-
-  useEffect(() => {
-    if (!tasksHydrated) return;
-    window.sessionStorage.setItem(taskStorageKey, JSON.stringify(learningTasks));
-  }, [learningTasks, taskStorageKey, tasksHydrated]);
 
   useEffect(() => {
     if (!canArrangeBoard) {
@@ -363,22 +308,35 @@ export default function BoardClient({
     setEditingNoteId(null);
   }
 
-  function askBoard() {
-    if (!query.trim()) return;
-    const lower = query.toLowerCase();
-
-    if (lower.includes("matem") || lower.includes("func")) {
-      setAnswer(
-        "Per començar, identifica quina és la variable independent. Mira l’exemple de la pàgina 84 i prova el primer exercici. Si m’expliques on t’encalles, et donaré una pista sense resoldre’l per tu.",
-      );
-    } else if (lower.includes("demà") || lower.includes("tasca")) {
-      setAnswer(
-        "Per demà tens els exercicis 12, 13 i 16 de Matemàtiques. També convé portar l’autorització de la sortida abans de divendres.",
-      );
-    } else {
-      setAnswer(
-        "Al tauler hi ha avisos, tasques de Classroom, materials de Moodle i activitats del grup. Pregunta’m per una matèria, una data o una publicació concreta.",
-      );
+  async function askBoard() {
+    const message = query.trim();
+    if (!message || assistantBusy) return;
+    setAssistantBusy(true);
+    setAnswer("");
+    let sessionKey = window.sessionStorage.getItem("eltaulell-ai-session");
+    if (!sessionKey) {
+      sessionKey = window.crypto.randomUUID();
+      window.sessionStorage.setItem("eltaulell-ai-session", sessionKey);
+    }
+    try {
+      const response = await fetch("/api/ai/tutor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupId: selectedBoard.groupId,
+          message,
+          sessionKey,
+          ...(assistantTaskId ? { taskId: assistantTaskId } : {}),
+        }),
+      });
+      const result = await response.json().catch(() => null) as
+        | { answer?: string; error?: string }
+        | null;
+      setAnswer(result?.answer || result?.error || "No s'ha pogut contactar amb el Tutor IA.");
+    } catch {
+      setAnswer("No s'ha pogut contactar amb el Tutor IA. Revisa la connexió i torna-ho a provar.");
+    } finally {
+      setAssistantBusy(false);
     }
   }
 
@@ -592,22 +550,32 @@ export default function BoardClient({
     setCardPositions({});
   }
 
-  function updateTaskStatus(taskId: string, status: TaskStatus) {
+  async function updateTaskStatus(taskId: string, status: TaskStatus) {
     const task = learningTasks.find((item) => item.id === taskId);
     if (!task || viewer.role !== "STUDENT") return;
 
     setLearningTasks((current) =>
       current.map((item) => (item.id === taskId ? { ...item, status } : item)),
     );
-
+    const response = await fetch(`/api/learning/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      setLearningTasks((current) =>
+        current.map((item) => (item.id === taskId ? task : item)),
+      );
+      const body = await response.json().catch(() => null) as { error?: string } | null;
+      setClassroomNotice(body?.error || "No s'ha pogut actualitzar la tasca.");
+    }
   }
 
-  function startTask(task: LearningTask) {
-    if (task.status === "PENDING") updateTaskStatus(task.id, "IN_PROGRESS");
+  function startTask(task: LearningTaskItem) {
+    if (task.status === "PENDING") void updateTaskStatus(task.id, "IN_PROGRESS");
     setQuery(`Ajuda'm a començar: ${task.title}`);
-    setAnswer(
-      `Comencem per entendre què et demana la tasca de ${task.subject}. Quina part tens clara i quin seria el primer pas més petit que podries fer?`,
-    );
+    setAnswer("");
+    setAssistantTaskId(task.id);
     setChatOpen(true);
     setClassroomNotice(
       task.classroomLinked
@@ -616,33 +584,33 @@ export default function BoardClient({
     );
   }
 
-  function deliverTask(task: LearningTask) {
-    updateTaskStatus(task.id, "DELIVERED");
+  function deliverTask(task: LearningTaskItem) {
+    void updateTaskStatus(task.id, "DELIVERED");
     setFeedbackTaskId(null);
     setClassroomNotice(
       task.classroomLinked
-        ? "Tasca marcada com a lliurada en aquesta demo local. Encara no s'ha enviat a Classroom perquè falta l'autorització OAuth."
-        : "Tasca marcada com a lliurada en aquesta demo local.",
+        ? "Tasca lliurada al Taulell. La sincronització amb Classroom s'executarà quan la connexió estigui activa."
+        : "Tasca marcada com a lliurada.",
     );
   }
 
-  function reclaimTask(task: LearningTask) {
-    updateTaskStatus(task.id, "IN_PROGRESS");
+  function reclaimTask(task: LearningTaskItem) {
+    void updateTaskStatus(task.id, "IN_PROGRESS");
     setClassroomNotice(
       task.classroomLinked
-        ? "Lliurament anul·lat en aquesta demo local. La recuperació real a Classroom s'activarà amb OAuth."
+        ? "Lliurament recuperat al Taulell. Classroom s'actualitzarà durant la sincronització."
         : "La tasca torna a estar en procés.",
     );
   }
 
   return (
-    <main className={`dashboard theme-${boardTheme}`}>
+    <main className={`dashboard theme-${boardTheme}`} data-group-id={selectedBoard.groupId}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">T</div>
           <div>
             <strong>El Taulell</strong>
-            <span>Institut Can Roca</span>
+            <span>{viewer.school}</span>
           </div>
         </div>
 
@@ -681,7 +649,7 @@ export default function BoardClient({
 
       <section className="welcome">
         <div>
-          <p className="eyebrow">DILLUNS, 28 DE JULIOL</p>
+          <p className="eyebrow">{new Intl.DateTimeFormat("ca-ES", { weekday: "long", day: "numeric", month: "long" }).format(new Date()).toUpperCase()}</p>
           <h1>
             Bon dia, {viewer.firstName}! <span>👋</span>
           </h1>
@@ -690,15 +658,12 @@ export default function BoardClient({
 
         <div className="today-card">
           <div className="date-block">
-            <strong>28</strong>
-            <span>JUL.</span>
+            <strong>{new Intl.DateTimeFormat("ca-ES", { day: "2-digit" }).format(new Date())}</strong>
+            <span>{new Intl.DateTimeFormat("ca-ES", { month: "short" }).format(new Date()).toUpperCase()}</span>
           </div>
           <div>
             <strong>Avui</strong>
-            <span>2 tasques · 1 activitat</span>
-          </div>
-          <div className="weather">
-            ☀️ <strong>27°</strong>
+            <span>{learningTasks.filter((task) => task.status === "PENDING" || task.status === "IN_PROGRESS").length} tasques · {initialCalendarEvents.length} elements d'agenda</span>
           </div>
         </div>
       </section>
@@ -842,7 +807,7 @@ export default function BoardClient({
                         </div>
 
                         <div className="task-card-badges">
-                          {task.classroomLinked && <em>Classroom · OAuth pendent</em>}
+                          {task.classroomLinked && <em>Google Classroom</em>}
                           {status === "IN_PROGRESS" && <b>En procés</b>}
                           {status === "DELIVERED" && <b>Esperant qualificació</b>}
                         </div>
@@ -962,33 +927,16 @@ export default function BoardClient({
                 <span>AVUI</span>
                 <strong>La teva agenda</strong>
               </div>
-              <button type="button">Veure tot</button>
+              <Link href="/calendari">Veure tot</Link>
             </div>
             <div className="timeline">
-              <div>
-                <time>10:15</time>
-                <i className="dot blue-dot" />
-                <p>
-                  <strong>Entrega · Matemàtiques</strong>
-                  <span>Classroom</span>
-                </p>
-              </div>
-              <div>
-                <time>12:30</time>
-                <i className="dot orange-dot" />
-                <p>
-                  <strong>Tutoria de grup</strong>
-                  <span>Aula 3.12</span>
-                </p>
-              </div>
-              <div>
-                <time>16:00</time>
-                <i className="dot green-dot" />
-                <p>
-                  <strong>Entrenament de vòlei</strong>
-                  <span>Gimnàs</span>
-                </p>
-              </div>
+              {initialCalendarEvents.slice(0, 3).map((event) => (
+                <div key={event.id}>
+                  <time>{new Intl.DateTimeFormat("ca-ES", { hour: "2-digit", minute: "2-digit" }).format(new Date(event.startsAt))}</time>
+                  <i className="dot blue-dot" />
+                  <p><strong>{event.title}</strong><span>{event.source === "EL_TAULELL" ? "El Taulell" : event.source.replaceAll("_", " ")}</span></p>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -998,7 +946,7 @@ export default function BoardClient({
               <b className="classroom-logo">C</b>
               <p>
                 <strong>Google Classroom</strong>
-                <span>Connexió pendent</span>
+                <span>{learningTasks.filter((task) => task.classroomLinked).length} tasques vinculades</span>
               </p>
               <em>↗</em>
             </Link>
@@ -1006,20 +954,12 @@ export default function BoardClient({
               <b className="moodle-logo">M</b>
               <p>
                 <strong>Moodle</strong>
-                <span>Servei no disponible</span>
+                <span>Recursos importats al tauler</span>
               </p>
               <em>↗</em>
             </Link>
           </section>
 
-          <section className="delegate card">
-            <div className="delegate-photo">LC</div>
-            <div>
-              <span>DELEGADA DEL GRUP</span>
-              <strong>Laia Canals</strong>
-              <p>Pot publicar activitats i crear consultes anònimes.</p>
-            </div>
-          </section>
         </aside>}
       </div>
 
@@ -1056,20 +996,27 @@ export default function BoardClient({
           </header>
           <div className="chat-content">
             <div className="bot-message">
-              Hola, Marc! Pregunta’m què hi ha al tauler o demana’m una pista per
+              Hola, {viewer.firstName}! Pregunta’m què hi ha al tauler o demana’m una pista per
               començar els deures.
             </div>
             {answer && <div className="bot-message answer">{answer}</div>}
           </div>
           <div className="chat-input">
             <input
+              disabled={assistantBusy}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && askBoard()}
               placeholder="Què necessites saber?"
               aria-label="Escriu una consulta"
             />
-            <button aria-label="Enviar consulta" onClick={askBoard} type="button">
+            <button
+              aria-busy={assistantBusy}
+              aria-label="Enviar consulta"
+              disabled={assistantBusy}
+              onClick={askBoard}
+              type="button"
+            >
               ↑
             </button>
           </div>

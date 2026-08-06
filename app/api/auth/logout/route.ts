@@ -5,9 +5,11 @@ import {
   revokePersistentSession,
   SESSION_COOKIE,
 } from "@/lib/demo-auth";
+import { PLATFORM_SESSION_COOKIE, revokePlatformSession } from "@/lib/platform-auth";
 
 export async function POST(request: NextRequest) {
   await revokePersistentSession(request.cookies.get(SESSION_COOKIE)?.value);
+  await revokePlatformSession(request.cookies.get(PLATFORM_SESSION_COOKIE)?.value);
   const response = new NextResponse(null, {
     status: 303,
     headers: { Location: "/acces" },
@@ -21,6 +23,10 @@ export async function POST(request: NextRequest) {
     path: "/",
   });
   response.cookies.set(SESSION_COOKIE, "", {
+    expires: new Date(0),
+    path: "/",
+  });
+  response.cookies.set(PLATFORM_SESSION_COOKIE, "", {
     expires: new Date(0),
     path: "/",
   });

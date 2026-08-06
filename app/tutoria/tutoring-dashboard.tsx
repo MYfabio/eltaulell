@@ -1,24 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  GROUP_AI_USAGE,
-  STUDENT_INSIGHTS,
-  SUBJECT_INSIGHTS,
-} from "@/lib/demo-insights";
+import type { LearningDashboard } from "@/lib/learning-types";
 
 type DashboardTab = "students" | "subjects" | "ai";
 
-export default function TutoringDashboard() {
+export default function TutoringDashboard({ dashboard }: { dashboard: LearningDashboard }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("students");
-  const groupStudents = useMemo(
-    () => STUDENT_INSIGHTS.filter((student) => student.group === GROUP_AI_USAGE.group),
-    [],
-  );
-  const averageProgress = Math.round(
-    groupStudents.reduce((total, student) => total + student.progressPercent, 0)
-      / groupStudents.length,
-  );
+  const groupStudents = useMemo(() => dashboard.students, [dashboard.students]);
+  const averageProgress = groupStudents.length
+    ? Math.round(
+        groupStudents.reduce((total, student) => total + student.progressPercent, 0)
+          / groupStudents.length,
+      )
+    : 0;
   const totalOverdue = groupStudents.reduce(
     (total, student) => total + student.overdueTasks,
     0,
@@ -29,7 +24,7 @@ export default function TutoringDashboard() {
       <article className="portal-panel full tutor-alert-panel">
         <div>
           <p className="panel-label">TUTORIA IA · SENYALS ANÒNIMS</p>
-          <h2>{GROUP_AI_USAGE.repeatedHelpSignals} possibles necessitats de suport al grup</h2>
+          <h2>{dashboard.aiUsage.repeatedHelpSignals} possibles necessitats de suport al grup</h2>
           <p>
             Es detecten per repetició i temps d'ús, sense mostrar noms, preguntes,
             respostes ni vincular l'activitat a cap alumne concret.
@@ -43,7 +38,7 @@ export default function TutoringDashboard() {
       <article className="portal-panel full tutor-dashboard">
         <header className="section-heading-row">
           <div>
-            <p className="panel-label">SEGUIMENT DEL GRUP {GROUP_AI_USAGE.group}</p>
+            <p className="panel-label">SEGUIMENT DEL GRUP {dashboard.aiUsage.group}</p>
             <h2>Tasques, resultats i ús agregat de la Tutoria IA</h2>
             <p>Una visió conjunta del grup que manté privada cada conversa amb l'assistent.</p>
           </div>
@@ -105,7 +100,7 @@ export default function TutoringDashboard() {
                       <td>{student.inProgressTasks}</td>
                       <td>{student.deliveredTasks}</td>
                       <td>{student.gradedTasks}</td>
-                      <td><strong>{student.averageGrade.toFixed(1)}</strong></td>
+                      <td><strong>{student.averageGrade?.toFixed(1) ?? "—"}</strong></td>
                     </tr>
                   ))}
                 </tbody>
@@ -116,7 +111,7 @@ export default function TutoringDashboard() {
 
         {activeTab === "subjects" && (
           <div className="subject-dashboard" role="tabpanel">
-            {SUBJECT_INSIGHTS.map((subject) => (
+            {dashboard.subjects.map((subject) => (
               <article key={subject.subject}>
                 <header><strong>{subject.subject}</strong><span>{subject.activeStudents} actius</span></header>
                 <div className="subject-progress">
@@ -124,15 +119,12 @@ export default function TutoringDashboard() {
                   <small>{subject.completionPercent}% completat</small>
                 </div>
                 <dl>
-                  <div><dt>Nota mitjana</dt><dd>{subject.averageGrade.toFixed(1)}</dd></div>
+                  <div><dt>Nota mitjana</dt><dd>{subject.averageGrade?.toFixed(1) ?? "—"}</dd></div>
                   <div><dt>Endarrerides</dt><dd>{subject.overdueTasks}</dd></div>
                 </dl>
               </article>
             ))}
-            <p className="classroom-local-note">
-              Les dades de Classroom són de demostració local. La sincronització real
-              s'activarà després de l'autorització OAuth del centre.
-            </p>
+            {!dashboard.subjects.length && <p className="classroom-local-note">Encara no hi ha tasques sincronitzades.</p>}
           </div>
         )}
 
@@ -147,10 +139,10 @@ export default function TutoringDashboard() {
             </div>
 
             <div className="ai-usage-metrics">
-              <article><span>Preguntes</span><strong>{GROUP_AI_USAGE.totalQuestions}</strong><small>{GROUP_AI_USAGE.period}</small></article>
-              <article><span>Temps total</span><strong>{GROUP_AI_USAGE.totalMinutes} min</strong><small>Consum del grup</small></article>
-              <article><span>Sessions</span><strong>{GROUP_AI_USAGE.activeSessions}</strong><small>Sense identificadors personals</small></article>
-              <article><span>Franja principal</span><strong>{GROUP_AI_USAGE.busiestTime}</strong><small>Activitat agregada</small></article>
+              <article><span>Preguntes</span><strong>{dashboard.aiUsage.totalQuestions}</strong><small>{dashboard.aiUsage.period}</small></article>
+              <article><span>Temps total</span><strong>{dashboard.aiUsage.totalMinutes} min</strong><small>Consum del grup</small></article>
+              <article><span>Sessions</span><strong>{dashboard.aiUsage.activeSessions}</strong><small>Sense identificadors personals</small></article>
+              <article><span>Franja principal</span><strong>{dashboard.aiUsage.busiestTime}</strong><small>Activitat agregada</small></article>
             </div>
 
             <section className="ai-subject-usage" aria-label="Consum de la IA per matèria">
@@ -159,9 +151,9 @@ export default function TutoringDashboard() {
                   <p className="panel-label">MATÈRIES AMB MÉS CONSULTES</p>
                   <h3>Distribució de l'ajuda sol·licitada</h3>
                 </div>
-                <span>Grup {GROUP_AI_USAGE.group}</span>
+                <span>Grup {dashboard.aiUsage.group}</span>
               </header>
-              {GROUP_AI_USAGE.subjects.map((subject) => (
+              {dashboard.aiUsage.subjects.map((subject) => (
                 <article key={subject.subject}>
                   <div>
                     <strong>{subject.subject}</strong>
