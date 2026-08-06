@@ -715,6 +715,7 @@ export function createLocalDb(): DatabaseClient {
         return state.aiUsageEvents.filter((event) => {
           if (where.studentMembershipId && event.studentMembershipId !== where.studentMembershipId) return false;
           if (typeof where.groupId === "string" && event.groupId !== where.groupId) return false;
+          if (where.sessionKeyHash && event.sessionKeyHash !== where.sessionKeyHash) return false;
           if (where.createdAt?.gte && event.createdAt < where.createdAt.gte) return false;
           return true;
         }).length;

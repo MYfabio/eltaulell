@@ -190,6 +190,8 @@ export default function BoardClient({
   const [chatOpen, setChatOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
+  const [assistantBusy, setAssistantBusy] = useState(false);
+  const [assistantTaskId, setAssistantTaskId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
@@ -340,22 +342,35 @@ export default function BoardClient({
     setEditingNoteId(null);
   }
 
-  function askBoard() {
-    if (!query.trim()) return;
-    const lower = query.toLowerCase();
-
-    if (lower.includes("matem") || lower.includes("func")) {
-      setAnswer(
-        "Per començar, identifica quina és la variable independent. Mira l’exemple de la pàgina 84 i prova el primer exercici. Si m’expliques on t’encalles, et donaré una pista sense resoldre’l per tu.",
-      );
-    } else if (lower.includes("demà") || lower.includes("tasca")) {
-      setAnswer(
-        "Per demà tens els exercicis 12, 13 i 16 de Matemàtiques. També convé portar l’autorització de la sortida abans de divendres.",
-      );
-    } else {
-      setAnswer(
-        "Al tauler hi ha avisos, tasques de Classroom, materials de Moodle i activitats del grup. Pregunta’m per una matèria, una data o una publicació concreta.",
-      );
+  async function askBoard() {
+    const message = query.trim();
+    if (!message || assistantBusy) return;
+    setAssistantBusy(true);
+    setAnswer("");
+    let sessionKey = window.sessionStorage.getItem("eltaulell-ai-session");
+    if (!sessionKey) {
+      sessionKey = window.crypto.randomUUID();
+      window.sessionStorage.setItem("eltaulell-ai-session", sessionKey);
+    }
+    try {
+      const response = await fetch("/api/ai/tutor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          groupId: selectedBoard.groupId,
+          message,
+          sessionKey,
+          ...(assistantTaskId ? { taskId: assistantTaskId } : {}),
+        }),
+      });
+      const result = await response.json().catch(() => null) as
+        | { answer?: string; error?: string }
+        | null;
+      setAnswer(result?.answer || result?.error || "No s'ha pogut contactar amb el Tutor IA.");
+    } catch {
+      setAnswer("No s'ha pogut contactar amb el Tutor IA. Revisa la connexió i torna-ho a provar.");
+    } finally {
+      setAssistantBusy(false);
     }
   }
 
@@ -593,9 +608,8 @@ export default function BoardClient({
   function startTask(task: LearningTaskItem) {
     if (task.status === "PENDING") void updateTaskStatus(task.id, "IN_PROGRESS");
     setQuery(`Ajuda'm a començar: ${task.title}`);
-    setAnswer(
-      `Comencem per entendre què et demana la tasca de ${task.subject}. Quina part tens clara i quin seria el primer pas més petit que podries fer?`,
-    );
+    setAnswer("");
+    setAssistantTaskId(task.id);
     setChatOpen(true);
     setClassroomNotice(
       task.classroomLinked
@@ -1051,13 +1065,20 @@ export default function BoardClient({
           </div>
           <div className="chat-input">
             <input
+              disabled={assistantBusy}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && askBoard()}
               placeholder="Què necessites saber?"
               aria-label="Escriu una consulta"
             />
-            <button aria-label="Enviar consulta" onClick={askBoard} type="button">
+            <button
+              aria-busy={assistantBusy}
+              aria-label="Enviar consulta"
+              disabled={assistantBusy}
+              onClick={askBoard}
+              type="button"
+            >
               ↑
             </button>
           </div>
