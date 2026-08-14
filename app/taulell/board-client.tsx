@@ -615,7 +615,7 @@ export default function BoardClient({
         </div>
 
         <nav aria-label="Navegació principal">
-          <Link className="nav-active" href="/taulell">
+          <Link className="nav-active" href={viewer.mode === "demo" ? "/demo" : "/taulell"}>
             El meu tauler
           </Link>
           {can(viewer, PERMISSIONS.MANAGE_SCHOOL) && (
@@ -642,7 +642,9 @@ export default function BoardClient({
             <span>{viewer.roleLabel} · {viewer.groupName}</span>
           </div>
           <form action="/api/auth/logout" method="post">
-            <button className="session-exit" type="submit">Sortir</button>
+            <button className="session-exit" type="submit">
+              {viewer.mode === "demo" ? "Accedir" : "Sortir"}
+            </button>
           </form>
         </div>
       </header>

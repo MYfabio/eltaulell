@@ -86,15 +86,15 @@ export default function HomePage() {
             tenir a mà tot el que passa a classe.
           </p>
           <div className="landing-actions">
-            <Link className="landing-primary" href="/acces">
-              Provar els perfils <span aria-hidden="true">→</span>
+            <Link className="landing-primary" href="/demo">
+              Veure el taulell d'alumne <span aria-hidden="true">→</span>
             </Link>
             <a className="landing-secondary" href="#que-es">
               Descobrir El Taulell
             </a>
           </div>
           <p className="landing-demo-note">
-            Demostració oberta per a coordinació, tutoria, delegació i alumnat
+            Demostració oberta del taulell d'alumne
           </p>
         </div>
 
@@ -270,7 +270,7 @@ export default function HomePage() {
           <p className="landing-kicker">Comença per veure-ho en acció</p>
           <h2>Un taulell. Tota la classe. Un centre més connectat.</h2>
         </div>
-        <Link className="landing-primary landing-primary-light" href="/acces">
+        <Link className="landing-primary landing-primary-light" href="/demo">
           Entrar a la demostració <span aria-hidden="true">→</span>
         </Link>
       </section>
