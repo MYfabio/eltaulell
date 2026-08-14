@@ -70,7 +70,10 @@ function redirectUrl(request: NextRequest, pathname: string) {
 }
 
 function redirectToAccess(request: NextRequest, error: "invalid" | "locked") {
-  return NextResponse.redirect(redirectUrl(request, `/acces?error=${error}`), 303);
+  return NextResponse.redirect(
+    redirectUrl(request, `/acces?administracio=centre&error=${error}`),
+    303,
+  );
 }
 
 export async function POST(request: NextRequest) {

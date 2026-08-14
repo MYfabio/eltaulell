@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticateAccount } from "@/lib/account-auth";
 import {
+  ensureCentreAdmin,
+  verifyCentreAdminCredentials,
+} from "@/lib/centre-admin-auth";
+import {
   createPersistentSession,
   DEMO_COOKIE,
   PLATFORM_DEMO_COOKIE,
@@ -32,6 +36,26 @@ function redirectTo(request: NextRequest, path: string) {
   return NextResponse.redirect(new URL(path, forwardedOrigin(request)), 303);
 }
 
+async function openSession(
+  request: NextRequest,
+  userId: string,
+  membershipId: string,
+  destination: string,
+) {
+  const session = await createPersistentSession(userId, membershipId);
+  const response = redirectTo(request, destination);
+  response.cookies.set(SESSION_COOKIE, session.token, {
+    httpOnly: true,
+    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  });
+  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
+  return response;
+}
+
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   if (origin && origin !== forwardedOrigin(request) && origin !== request.nextUrl.origin) {
@@ -49,6 +73,20 @@ export async function POST(request: NextRequest) {
     parsed.data.schoolSlug,
   );
   if ("error" in result) {
+    const centreAdmin = verifyCentreAdminCredentials(
+      parsed.data.email,
+      parsed.data.password,
+    );
+    if (centreAdmin) {
+      const subject = await ensureCentreAdmin(centreAdmin);
+      return openSession(
+        request,
+        subject.userId,
+        subject.membershipId,
+        "/coordinacio",
+      );
+    }
+
     const error = result.error === "LOCKED"
       ? "locked"
       : result.error === "CENTRE_REQUIRED"
@@ -60,16 +98,10 @@ export async function POST(request: NextRequest) {
     return redirectTo(request, `/acces?accountError=${error}`);
   }
 
-  const session = await createPersistentSession(result.userId, result.membership.id);
-  const response = redirectTo(request, ROLE_HOME[result.membership.role]);
-  response.cookies.set(SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  return response;
+  return openSession(
+    request,
+    result.userId,
+    result.membership.id,
+    ROLE_HOME[result.membership.role],
+  );
 }
