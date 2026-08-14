@@ -71,7 +71,6 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
       {!adminMode && (
         <section className="account-access-card account-access-card-simple">
           <div>
-            <span>ACCÉS ÚNIC</span>
             <h2>Correu i contrasenya</h2>
             <p>Coordinació, tutoria, delegació i alumnat entren des del mateix lloc.</p>
           </div>
