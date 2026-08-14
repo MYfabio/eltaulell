@@ -257,6 +257,79 @@ textarea:focus-visible {
   }
 }
 
+.access-page-simple {
+  max-width: 1180px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+
+.access-simple-intro {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 36px 0 22px;
+}
+
+.access-simple-intro > div:first-child > p {
+  margin: 0 0 8px;
+  color: #587196;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.access-simple-intro h1 {
+  margin: 0 0 8px;
+  color: #183a64;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(36px, 5vw, 62px);
+  letter-spacing: -.04em;
+}
+
+.access-simple-intro > div:first-child > span {
+  color: #617490;
+  font-size: 16px;
+}
+
+.account-access-card-simple {
+  margin-top: 0;
+}
+
+.access-simple-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px 12px 0;
+  color: #5f7188;
+  font-size: 13px;
+}
+
+.access-simple-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.access-simple-footer a:hover {
+  color: #183a64;
+  text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+  .access-simple-intro {
+    display: grid;
+    align-items: start;
+    margin-top: 24px;
+  }
+
+  .access-page-simple .account-access-card,
+  .access-page-simple .account-access-card form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .portal-form {
   display: flex;
   flex-direction: column;
