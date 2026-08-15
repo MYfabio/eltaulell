@@ -6,7 +6,7 @@
     "dev": "next dev",
     "local": "node scripts/local-preview.mjs",
     "build": "prisma generate && next build",
-    "start": "next start",
+    "start": "prisma generate && next start",
     "postinstall": "prisma generate",
     "lint": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-strip-types --test-isolation=none \"tests/*.test.mjs\"",
