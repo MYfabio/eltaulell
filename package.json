@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "local": "node scripts/local-preview.mjs",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "lint": "tsc --noEmit",
