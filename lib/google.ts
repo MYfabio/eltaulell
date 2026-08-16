@@ -171,7 +171,7 @@ export async function completeGoogleAuthorization(
   const expiresAt = new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000);
   const encryptedAccess = encryptSecret(tokens.access_token);
   const encryptedRefresh = tokens.refresh_token ? encryptSecret(tokens.refresh_token) : undefined;
-  await db.oauthAccount.upsert({
+  await db.oAuthAccount.upsert({
     where: { provider_providerAccountId: { provider: "GOOGLE", providerAccountId: profile.id } },
     update: {
       userId: access.userId,
@@ -237,14 +237,14 @@ async function connectionToken(schoolId: string, provider: ConnectionRow["provid
 }
 
 async function userToken(userId: string) {
-  const account = await db.oauthAccount.findFirst({ where: { userId, provider: "GOOGLE" } }) as OAuthRow | null;
+  const account = await db.oAuthAccount.findFirst({ where: { userId, provider: "GOOGLE" } }) as OAuthRow | null;
   if (!account?.accessTokenCiphertext) throw new Error("GOOGLE_USER_NOT_CONNECTED");
   if (account.accessTokenExpiresAt && account.accessTokenExpiresAt.getTime() > Date.now() + 60_000) {
     return decryptSecret(account.accessTokenCiphertext);
   }
   if (!account.refreshTokenCiphertext) throw new Error("GOOGLE_USER_REFRESH_TOKEN_MISSING");
   const refreshed = await refreshAccessToken(decryptSecret(account.refreshTokenCiphertext));
-  await db.oauthAccount.upsert({
+  await db.oAuthAccount.upsert({
     where: { provider_providerAccountId: { provider: "GOOGLE", providerAccountId: account.providerAccountId } },
     update: {
       accessTokenCiphertext: encryptSecret(refreshed.access_token),

@@ -48,7 +48,7 @@ export interface DatabaseClient {
   integrationSyncJob: { create: DbMethod; update: DbMethod };
   externalCourse: { findMany: DbMethod; upsert: DbMethod };
   externalResource: { findMany: DbMethod; upsert: DbMethod };
-  oauthAccount: { findFirst: DbMethod; upsert: DbMethod };
+  oAuthAccount: { findFirst: DbMethod; upsert: DbMethod };
   calendarEvent: {
     create: DbMethod;
     deleteMany: DbMethod;
@@ -989,7 +989,7 @@ export function createLocalDb(): DatabaseClient {
       },
     },
 
-    oauthAccount: {
+    oAuthAccount: {
       async findFirst({ where }: Row) {
         return state.oauthAccounts.find((account) => {
           if (where.userId && account.userId !== where.userId) return false;
