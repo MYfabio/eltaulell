@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import CookieNotice from "@/app/components/cookie-notice";
 import "./globals.css";
 import "./portal.css";
 
@@ -27,7 +28,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ca">
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieNotice />
+      </body>
     </html>
   );
 }

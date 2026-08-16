@@ -36,7 +36,10 @@ export async function POST(request: Request) {
       AI_ROLE_FORBIDDEN: [403, "Aquest perfil no pot utilitzar el Tutor IA."],
       AI_GROUP_FORBIDDEN: [403, "No tens accés a aquest grup."],
       AI_DAILY_LIMIT_REACHED: [429, "Has arribat al límit d'avui. Continua amb el tutor o tutora del grup."],
-      OPENAI_API_KEY_NOT_CONFIGURED: [503, "El Tutor IA encara no està configurat pel centre."],
+      AI_PROVIDER_NOT_CONFIGURED: [503, "El Tutor IA encara no està configurat pel centre."],
+      AI_PROVIDER_INVALID: [503, "El proveïdor del Tutor IA no està configurat correctament."],
+      VERTEX_AI_CREDENTIALS_INVALID: [503, "Les credencials de Vertex AI no són vàlides."],
+      AI_SAFETY_BLOCKED: [422, "No puc respondre aquesta consulta de manera segura. Parla amb el tutor o tutora del grup."],
     };
     const [status, message] = responses[code] || [502, "El Tutor IA no està disponible ara mateix. Torna-ho a provar d'aquí a uns minuts."];
     return NextResponse.json({ error: message }, { status });

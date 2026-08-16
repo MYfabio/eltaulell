@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { createGoogleAuthorization, isGoogleConfigured } from "@/lib/google";
+import { temporarySecurityCookieOptions } from "@/lib/security-cookies";
 
 export async function GET() {
   const viewer = await getDemoViewer();
@@ -10,12 +11,10 @@ export async function GET() {
   }
   const authorization = await createGoogleAuthorization(viewer);
   const response = NextResponse.redirect(authorization.url);
-  response.cookies.set("eltaulell_google_oauth_state", authorization.state, {
-    httpOnly: true,
-    maxAge: 10 * 60,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/api/auth/google/callback",
-  });
+  response.cookies.set(
+    "eltaulell_google_oauth_state",
+    authorization.state,
+    temporarySecurityCookieOptions(10 * 60, "/api/auth/google/callback"),
+  );
   return response;
 }

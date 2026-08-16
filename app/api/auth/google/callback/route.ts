@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { completeGoogleAuthorization } from "@/lib/google";
+import { expireSecurityCookie } from "@/lib/security-cookies";
 
 function publicOrigin(request: NextRequest) {
   const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim()
@@ -22,7 +23,11 @@ export async function GET(request: NextRequest) {
   try {
     await completeGoogleAuthorization(viewer, code, state);
     const response = NextResponse.redirect(new URL("/integracions?google=connected", publicOrigin(request)));
-    response.cookies.set("eltaulell_google_oauth_state", "", { expires: new Date(0), path: "/api/auth/google/callback" });
+    response.cookies.set(
+      "eltaulell_google_oauth_state",
+      "",
+      expireSecurityCookie("/api/auth/google/callback"),
+    );
     return response;
   } catch (error) {
     console.error("Google OAuth callback failed", error);

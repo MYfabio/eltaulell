@@ -6,6 +6,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/demo-auth";
 import { PLATFORM_SESSION_COOKIE, revokePlatformSession } from "@/lib/platform-auth";
+import { expireSecurityCookie } from "@/lib/security-cookies";
 
 export async function POST(request: NextRequest) {
   await revokePersistentSession(request.cookies.get(SESSION_COOKIE)?.value);
@@ -14,21 +15,9 @@ export async function POST(request: NextRequest) {
     status: 303,
     headers: { Location: "/acces" },
   });
-  response.cookies.set(DEMO_COOKIE, "", {
-    expires: new Date(0),
-    path: "/",
-  });
-  response.cookies.set(PLATFORM_DEMO_COOKIE, "", {
-    expires: new Date(0),
-    path: "/",
-  });
-  response.cookies.set(SESSION_COOKIE, "", {
-    expires: new Date(0),
-    path: "/",
-  });
-  response.cookies.set(PLATFORM_SESSION_COOKIE, "", {
-    expires: new Date(0),
-    path: "/",
-  });
+  response.cookies.set(DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(PLATFORM_DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(SESSION_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(PLATFORM_SESSION_COOKIE, "", expireSecurityCookie());
   return response;
 }

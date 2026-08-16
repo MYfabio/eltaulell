@@ -266,7 +266,7 @@ textarea:focus-visible {
 
 .access-simple-intro {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
   margin: 36px 0 22px;
@@ -439,7 +439,7 @@ textarea:focus-visible {
 .query-reply {
   display: grid;
   grid-template-columns: 1fr auto;
-  align-items: end;
+  align-items: flex-end;
   gap: 9px;
 }
 
@@ -1353,7 +1353,7 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: 1.45fr .75fr;
   gap: 50px;
-  align-items: end;
+  align-items: flex-end;
   padding: 52px 0 28px;
 }
 
@@ -1414,7 +1414,7 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 4px 12px;
-  align-items: end;
+  align-items: flex-end;
   border: 1px solid #e2e6df;
   border-radius: 14px;
   background: white;
@@ -1450,7 +1450,7 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: 1fr minmax(220px, .7fr) auto;
   gap: 16px;
-  align-items: end;
+  align-items: flex-end;
   border: 1px solid #e2e6df;
   border-radius: 15px;
   background: white;
@@ -3763,5 +3763,86 @@ textarea:focus-visible {
 
   .demo-request-list footer > button {
     width: 100%;
+  }
+}
+/* Avís global de galetes estrictament necessàries */
+.cookie-notice {
+  position: fixed;
+  z-index: 1200;
+  right: 24px;
+  bottom: 24px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 18px;
+  background: #173354;
+  color: #fff;
+  box-shadow: 0 18px 55px rgba(18, 40, 65, .28);
+}
+
+.cookie-notice strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 16px;
+}
+
+.cookie-notice p {
+  max-width: 680px;
+  margin: 0;
+  color: rgba(255, 255, 255, .82);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.cookie-notice-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.cookie-notice-actions a,
+.cookie-notice-actions button {
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.cookie-notice-actions a {
+  color: #fff;
+}
+
+.cookie-notice-actions button {
+  border: 0;
+  background: #f5c95c;
+  color: #173354;
+  cursor: pointer;
+}
+
+.cookie-notice-actions a:focus-visible,
+.cookie-notice-actions button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+@media (max-width: 680px) {
+  .cookie-notice {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .cookie-notice-actions {
+    justify-content: space-between;
   }
 }

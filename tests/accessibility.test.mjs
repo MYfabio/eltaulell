@@ -27,10 +27,13 @@ test("motion and keyboard focus have accessible fallbacks", () => {
   assert.match(css, /:focus-visible/);
 });
 
-test("privacy and terms are reachable and use one primary heading", () => {
-  for (const page of ["app/privacitat/page.tsx", "app/termes/page.tsx"]) {
+test("privacy, cookies and terms are reachable and use one primary heading", () => {
+  for (const page of ["app/privacitat/page.tsx", "app/cookies/page.tsx", "app/termes/page.tsx"]) {
     const content = source(page);
     assert.equal((content.match(/<h1>/g) || []).length, 1);
     assert.match(content, /<main className="legal-page">/);
   }
+  const notice = source("app/components/cookie-notice.tsx");
+  assert.match(notice, /aria-label="Avís de galetes de seguretat"/);
+  assert.match(notice, /href="\/cookies"/);
 });

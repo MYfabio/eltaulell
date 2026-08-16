@@ -122,6 +122,10 @@ test("the role permission matrix blocks student publishing and delegate moderati
   assert.equal(can("DELEGATE", PERMISSIONS.ARRANGE_BOARD), true);
   assert.equal(can("STUDENT", PERMISSIONS.ARRANGE_BOARD), true);
   assert.equal(can("TUTOR", PERMISSIONS.ARRANGE_BOARD), false);
+  assert.equal(can("STUDENT", PERMISSIONS.USE_ASSISTANT), true);
+  assert.equal(can("DELEGATE", PERMISSIONS.USE_ASSISTANT), true);
+  assert.equal(can("TUTOR", PERMISSIONS.USE_ASSISTANT), false);
+  assert.equal(can("COORDINATOR", PERMISSIONS.USE_ASSISTANT), false);
 });
 
 test("centre administrator passwords are verified from a salted hash", () => {

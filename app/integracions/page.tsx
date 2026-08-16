@@ -1,6 +1,7 @@
 import PortalShell from "@/app/components/portal-shell";
 import ExternalIntegrationsClient from "@/app/integracions/external-integrations-client";
 import IntegrationsClient from "@/app/integracions/integrations-client";
+import { getAiProviderStatus } from "@/lib/ai-provider";
 import { requireDemoPermission } from "@/lib/demo-auth";
 import { getExternalIntegrationState } from "@/lib/external-integrations";
 import { getGoogleIntegrationState } from "@/lib/google";
@@ -15,6 +16,7 @@ export default async function IntegrationsPage() {
     getExternalIntegrationState(viewer),
   ]);
   const googleConnected = google.classroom?.status === "CONNECTED";
+  const aiProvider = getAiProviderStatus();
 
   return (
     <PortalShell
@@ -25,6 +27,24 @@ export default async function IntegrationsPage() {
       viewer={viewer}
     >
       <section className="portal-grid">
+        <article className="portal-panel wide">
+          <p className="panel-label">TUTOR IA</p>
+          <h2>{aiProvider.label}</h2>
+          <p>
+            Proveïdor configurable amb instruccions socràtiques, filtres de
+            seguretat i sense historials de preguntes o respostes.
+          </p>
+        </article>
+
+        <article className="portal-panel">
+          <p className="panel-label">ESTAT</p>
+          <h2>Assistent</h2>
+          <span className={aiProvider.configured ? "status-pill connected" : "status-pill offline"}>
+            {aiProvider.configured ? "Configurat" : "Pendent de credencials"}
+          </span>
+          <p>{aiProvider.detail}. Les claus només es desen com a secrets de Railway.</p>
+        </article>
+
         <article className="portal-panel wide">
           <p className="panel-label">GOOGLE WORKSPACE</p>
           <h2>Google Classroom i Calendar</h2>

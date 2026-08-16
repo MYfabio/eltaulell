@@ -282,6 +282,7 @@ export default function HomePage() {
         </Link>
         <p>Una plataforma educativa multi-centre en desenvolupament.</p>
         <Link href="/privacitat">Privacitat</Link>
+        <Link href="/cookies">Galetes</Link>
         <Link href="/termes">Termes d'ús</Link>
         <Link href="/acces">Accés als perfils</Link>
       </footer>

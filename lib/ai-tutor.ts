@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { getViewerAccessContext } from "@/lib/access-control";
+import { callTutorModel } from "@/lib/ai-provider";
 import { classifyAiRisk, socraticInstructions, urgentSafetyResponse } from "@/lib/ai-safety";
 import { db } from "@/lib/db";
 import type { DemoViewer } from "@/lib/demo-auth";
@@ -36,54 +37,6 @@ function sessionHash(membershipId: string, sessionKey: string) {
   return createHash("sha256")
     .update(`${membershipId}:${sessionKey}:${process.env.AUTH_SECRET || "local"}`)
     .digest("hex");
-}
-
-function extractResponseText(payload: unknown) {
-  if (!payload || typeof payload !== "object") return "";
-  const response = payload as {
-    output_text?: unknown;
-    output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
-  };
-  if (typeof response.output_text === "string") return response.output_text.trim();
-  return (response.output || [])
-    .flatMap((item) => item.content || [])
-    .filter((item) => item.type === "output_text" && typeof item.text === "string")
-    .map((item) => item.text!.trim())
-    .filter(Boolean)
-    .join("\n");
-}
-
-async function callTutorModel(
-  input: string,
-  riskLevel: "NONE" | "CONCERN",
-  safetyIdentifier: string,
-) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) throw new Error("OPENAI_API_KEY_NOT_CONFIGURED");
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-sol",
-      instructions: socraticInstructions(riskLevel),
-      input,
-      max_output_tokens: 350,
-      store: false,
-      safety_identifier: safetyIdentifier,
-    }),
-    signal: AbortSignal.timeout(25_000),
-  });
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    const code = (payload as { error?: { code?: string } } | null)?.error?.code;
-    throw new Error(code ? `OPENAI_${code}` : `OPENAI_HTTP_${response.status}`);
-  }
-  const answer = extractResponseText(payload);
-  if (!answer) throw new Error("OPENAI_EMPTY_RESPONSE");
-  return answer;
 }
 
 export async function askAiTutor(viewer: DemoViewer, request: TutorRequest) {
@@ -125,18 +78,20 @@ export async function askAiTutor(viewer: DemoViewer, request: TutorRequest) {
   const riskLevel = classifyAiRisk(request.message);
 
   let answer: string;
+  const startedAt = Date.now();
   if (riskLevel === "URGENT") {
     answer = urgentSafetyResponse();
   } else {
     const context = task
       ? `Context de la tasca: matèria ${task.subject}; títol ${task.title}; estat ${task.status}; data límit ${task.dueAt?.toISOString() || "no indicada"}.\n\n`
       : "";
-    answer = await callTutorModel(
-      `${context}Missatge de l'alumne: ${request.message}`,
-      riskLevel,
-      hash.slice(0, 64),
-    );
+    answer = await callTutorModel({
+      input: `${context}Missatge de l'alumne: ${request.message}`,
+      instructions: socraticInstructions(riskLevel),
+      safetyIdentifier: hash.slice(0, 64),
+    });
   }
+  const durationSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
 
   await db.aiUsageEvent.create({
     data: {
@@ -147,7 +102,7 @@ export async function askAiTutor(viewer: DemoViewer, request: TutorRequest) {
       subject: task?.subject ?? null,
       taskId: task?.id ?? null,
       questionCount: 1,
-      durationSeconds: 0,
+      durationSeconds,
       repeatedHelpSignal,
       riskLevel,
     },

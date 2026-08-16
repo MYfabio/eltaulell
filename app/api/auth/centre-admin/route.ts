@@ -10,6 +10,7 @@ import {
   PLATFORM_DEMO_COOKIE,
   SESSION_COOKIE,
 } from "@/lib/demo-auth";
+import { expireSecurityCookie, sessionCookieOptions } from "@/lib/security-cookies";
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(180),
@@ -104,14 +105,8 @@ export async function POST(request: NextRequest) {
   const subject = await ensureCentreAdmin(config);
   const session = await createPersistentSession(subject.userId, subject.membershipId);
   const response = NextResponse.redirect(redirectUrl(request, "/coordinacio"), 303);
-  response.cookies.set(SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
+  response.cookies.set(DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(PLATFORM_DEMO_COOKIE, "", expireSecurityCookie());
   return response;
 }

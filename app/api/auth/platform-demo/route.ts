@@ -6,6 +6,7 @@ import {
   PLATFORM_DEMO_COOKIE,
   SESSION_COOKIE,
 } from "@/lib/demo-auth";
+import { expireSecurityCookie, sessionCookieOptions } from "@/lib/security-cookies";
 
 export async function POST() {
   if (!isPlatformDemoEnabled()) {
@@ -19,14 +20,12 @@ export async function POST() {
     status: 303,
     headers: { Location: "/administracio-plataforma" },
   });
-  response.cookies.set(PLATFORM_DEMO_COOKIE, createPlatformDemoSession(), {
-    httpOnly: true,
-    maxAge: 8 * 60 * 60,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  response.cookies.set(SESSION_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(
+    PLATFORM_DEMO_COOKIE,
+    createPlatformDemoSession(),
+    sessionCookieOptions(new Date(Date.now() + 8 * 60 * 60 * 1000)),
+  );
+  response.cookies.set(DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(SESSION_COOKIE, "", expireSecurityCookie());
   return response;
 }

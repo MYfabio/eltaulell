@@ -13,7 +13,8 @@ les consultes anònimes, el calendari i els accessos a les eines educatives en u
 - SuperAdmin protegit amb contrasenya xifrada, TOTP, bloqueig d'intents, sessions
   revocables i llista opcional d'IP autoritzades.
 - OAuth 2.0 de Google i serveis per sincronitzar Classroom i Google Calendar.
-- Tutor IA socràtic amb límit diari, detecció de risc i estadístiques anònimes;
+- Tutor IA socràtic amb proveïdor configurable —Vertex AI Gemini per defecte o
+  OpenAI—, límit diari, detecció de risc i estadístiques anònimes;
   no conserva els prompts ni les respostes de l'alumnat.
 - Consultes anònimes amb resposta, derivació i tancament sense desar la identitat
   de l'alumne al tiquet.
@@ -52,7 +53,7 @@ amb S3. Totes les variables necessàries estan documentades a `.env.example`:
 - compte SuperAdmin i secret TOTP;
 - xifrat de tokens i de còpies de seguretat;
 - Google OAuth, Classroom i Calendar;
-- OpenAI per a la Tutoria IA;
+- Vertex AI Gemini per a la Tutoria IA, amb OpenAI com a proveïdor alternatiu;
 - Moodle i iEduca;
 - correu transaccional;
 - treballs programats i observabilitat.

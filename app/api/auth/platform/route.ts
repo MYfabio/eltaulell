@@ -7,6 +7,7 @@ import {
   PLATFORM_SESSION_COOKIE,
   platformRequestIp,
 } from "@/lib/platform-auth";
+import { expireSecurityCookie, sessionCookieOptions } from "@/lib/security-cookies";
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(180),
@@ -52,15 +53,13 @@ export async function POST(request: NextRequest) {
   }
   const session = await createPlatformSession(result.userId);
   const response = redirectTo(request, "/administracio-plataforma");
-  response.cookies.set(PLATFORM_SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  response.cookies.set(SESSION_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(
+    PLATFORM_SESSION_COOKIE,
+    session.token,
+    sessionCookieOptions(session.expiresAt, "strict"),
+  );
+  response.cookies.set(DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(PLATFORM_DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(SESSION_COOKIE, "", expireSecurityCookie());
   return response;
 }

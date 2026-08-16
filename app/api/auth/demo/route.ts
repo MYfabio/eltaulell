@@ -11,6 +11,7 @@ import {
   SESSION_COOKIE,
   type DemoRole,
 } from "@/lib/demo-auth";
+import { expireSecurityCookie, sessionCookieOptions } from "@/lib/security-cookies";
 
 const ROLE_HOME: Record<DemoRole, string> = {
   COORDINATOR: "/coordinacio",
@@ -60,15 +61,9 @@ async function openDemo(viewer: (typeof DEMO_VIEWERS)[number], returnTo?: string
     status: 303,
     headers: { "Cache-Control": "no-store", Location: destination },
   });
-  response.cookies.set(SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
+  response.cookies.set(DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(PLATFORM_DEMO_COOKIE, "", expireSecurityCookie());
   return response;
 }
 

@@ -141,6 +141,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
         {(platformAdminConfigured || platformAdminEnabled) && <Link href="/acces?administracio=plataforma">Administració</Link>}
         {centreAdminEnabled && <Link href="/acces?administracio=centre">Alta inicial</Link>}
         <Link href="/privacitat">Privacitat</Link>
+        <Link href="/cookies">Galetes</Link>
         <Link href="/termes">Termes</Link>
       </footer>
     </main>

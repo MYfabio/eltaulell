@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { activateAccount } from "@/lib/account-auth";
 import { createPersistentSession, SESSION_COOKIE, type DemoRole } from "@/lib/demo-auth";
+import { sessionCookieOptions } from "@/lib/security-cookies";
 
 const activationSchema = z.object({
   token: z.string().min(20).max(200),
@@ -60,12 +61,6 @@ export async function POST(request: NextRequest) {
     new URL(ROLE_HOME[result.role], publicOrigin(request)),
     303,
   );
-  response.cookies.set(SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
+  response.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
   return response;
 }

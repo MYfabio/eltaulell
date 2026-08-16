@@ -12,6 +12,7 @@ import {
   SESSION_COOKIE,
   type DemoRole,
 } from "@/lib/demo-auth";
+import { expireSecurityCookie, sessionCookieOptions } from "@/lib/security-cookies";
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(180),
@@ -44,15 +45,9 @@ async function openSession(
 ) {
   const session = await createPersistentSession(userId, membershipId);
   const response = redirectTo(request, destination);
-  response.cookies.set(SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    maxAge: Math.floor((session.expiresAt.getTime() - Date.now()) / 1000),
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-  response.cookies.set(DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
-  response.cookies.set(PLATFORM_DEMO_COOKIE, "", { expires: new Date(0), path: "/" });
+  response.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
+  response.cookies.set(DEMO_COOKIE, "", expireSecurityCookie());
+  response.cookies.set(PLATFORM_DEMO_COOKIE, "", expireSecurityCookie());
   return response;
 }
 
