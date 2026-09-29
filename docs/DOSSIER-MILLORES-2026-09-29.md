@@ -5,7 +5,7 @@ Solo lectura: no se ha tocado producción, la base de datos ni ninguna rama.
 
 ## 1. Estado en una frase
 
-La app está en línea en eltaulell.aulaia.cat. Lo que hay en `main` compila, pasa sus 21 tests y es exactamente lo que sirve Railway (commit `bc8cc4c`, 16/08). La base es sólida: varios centros separados entre sí, roles comprobados en el servidor, sesiones revocables y adjuntos privados. Hay tres cosas que conviene resolver antes de enseñarla a más centros: la IA, los secretos y la vista en móvil.
+La app está en línea en eltaulell.aulaia.cat. Lo que hay en `main` compila, pasa sus 21 tests y es exactamente lo que sirve Railway (commit `bc8cc4c`, 16/08). La base es sólida: varios centros separados entre sí, roles comprobados en el servidor, sesiones revocables y adjuntos privados. Hay dos cosas que conviene resolver antes de enseñarla a más centros: la IA y los secretos. En móvil se ve bien (comprobado a 375 px).
 
 ## 2. Qué funciona
 
@@ -23,11 +23,10 @@ La app está en línea en eltaulell.aulaia.cat. Lo que hay en `main` compila, pa
 | - | --- | --- | --- |
 | 1 | **La Tutoría IA no funciona en producción.** Llama a OpenAI con un modelo que no existe (`gpt-5.6-sol`) y en Railway no hay `OPENAI_API_KEY`. | `lib/ai-tutor.ts:61-76` | El botón «Pregunta al Taulell» falla. |
 | 2 | **La versión con Gemini (Vertex AI) no está fusionada.** Además trae HSTS, cookies centralizadas y página de cookies. | rama `agent/vertex-gemini-cookies` | Es la solución al punto 1, pero se quedó sin fusionar el 16/08. |
-| 3 | **En móvil la página se sale por la derecha**, tanto en la portada como en la demo: textos y cabecera cortados. | `landing.css`, `taulell.css` | Es lo primero que ve un docente que abre el enlace desde el móvil. |
-| 4 | **La demo tiene fechas fijas de agosto.** Una tarea «pendiente» vence el 17/08, en el pasado. | datos de la demo | La demo parece abandonada. |
-| 5 | **Google Classroom no está conectado:** el botón dice «Pendent de credencials de Google Cloud» y la entrega de tareas es simulada. | `app/integracions/integrations-client.tsx:28` | La portada promete «integracions educatives». |
-| 6 | **La documentación está desfasada.** `PROJECT.md` (del 3–5/08) da por pendientes cosas que ya existen, y el ROADMAP no refleja lo fusionado. | `PROJECT.md`, `ROADMAP.md` | Confunde a cualquier sesión nueva. |
-| 7 | **En el catálogo de aulaia.cat sale «en construcción» y sin enlace**, aunque está en línea con demo. | `aulaia-cat/data/apps.json` | Se pierde visibilidad. |
+| 3 | **La demo tiene fechas fijas de agosto.** Una tarea «pendiente» vence el 17/08, en el pasado. | datos de la demo | La demo parece abandonada. |
+| 4 | **Google Classroom no está conectado:** el botón dice «Pendent de credencials de Google Cloud» y la entrega de tareas es simulada. | `app/integracions/integrations-client.tsx:28` | La portada promete «integracions educatives». |
+| 5 | **La documentación está desfasada.** `PROJECT.md` (del 3–5/08) da por pendientes cosas que ya existen, y el ROADMAP no refleja lo fusionado. | `PROJECT.md`, `ROADMAP.md` | Confunde a cualquier sesión nueva. |
+| 6 | **En el catálogo de aulaia.cat sale «en construcción» y sin enlace**, aunque está en línea con demo. | `aulaia-cat/data/apps.json` | Se pierde visibilidad. |
 
 ## 4. Seguridad
 
@@ -57,21 +56,19 @@ Lo que sí haría para que se note que es de la familia aulaia:
 2. **Entrada con Google como opción principal**, igual que las demás apps, y la contraseña piloto como alternativa. El código ya está.
 3. **Cargar Inter de verdad** con `next/font`. Ahora depende de que el ordenador la tenga instalada, y en muchos Chromebooks del centro no está.
 4. **Colores en variables CSS** (`:root`), para poder ajustar la paleta y el modo oscuro sin tocar 7.000 líneas de CSS repartidas en cuatro ficheros.
-5. **Arreglar el móvil (punto 3.3) antes que nada.** Es el problema gráfico más visible.
 
 ## 7. Plan propuesto, por orden
 
 | Orden | Tarea | Impacto | Esfuerzo | ¿Necesita a Fabio? |
 | - | --- | - | - | - |
-| 1 | Arreglar el desbordamiento en móvil | Alto | Bajo | No |
-| 2 | Fechas de la demo relativas a hoy | Medio | Bajo | No |
-| 3 | Pasar la ficha del catálogo a «en línia» con enlace y captura | Medio | Bajo | Confirmar |
-| 4 | Poner al día y fusionar `vertex-gemini-cookies` y activar Gemini | Alto | Medio | Sí: credenciales de Vertex en Railway |
-| 5 | Obligar `AUTH_SECRET` y quitar los repuestos débiles | Alto | Bajo | No |
-| 6 | CSP y validación de adjuntos por contenido | Medio | Bajo | No |
-| 7 | Pie común aulaia, Inter con `next/font`, variables de color | Medio | Medio | No |
-| 8 | Actualizar PROJECT.md y ROADMAP.md; borrar ramas viejas | Medio | Bajo | Confirmar el borrado |
-| 9 | Tests de las rutas de API (adjuntos, votos, invitaciones) con base de datos local | Alto | Medio | No |
-| 10 | Classroom real, decidir las copias de seguridad (`CRON_SECRET`) | Medio | Medio | Sí: Google Cloud |
+| 1 | Fechas de la demo relativas a hoy | Medio | Bajo | No |
+| 2 | Pasar la ficha del catálogo a «en línia» con enlace y captura | Medio | Bajo | Confirmar |
+| 3 | Poner al día y fusionar `vertex-gemini-cookies` y activar Gemini | Alto | Medio | Sí: credenciales de Vertex en Railway |
+| 4 | Obligar `AUTH_SECRET` y quitar los repuestos débiles | Alto | Bajo | No |
+| 5 | CSP y validación de adjuntos por contenido | Medio | Bajo | No |
+| 6 | Pie común aulaia, Inter con `next/font`, variables de color | Medio | Medio | No |
+| 7 | Actualizar PROJECT.md y ROADMAP.md; borrar ramas viejas | Medio | Bajo | Confirmar el borrado |
+| 8 | Tests de las rutas de API (adjuntos, votos, invitaciones) con base de datos local | Alto | Medio | No |
+| 9 | Classroom real, decidir las copias de seguridad (`CRON_SECRET`) | Medio | Medio | Sí: Google Cloud |
 
 Aviso general, también para las demás apps: Railway deja de aceptar `railway.toml` el **01/12/2026**. Hay que migrarlo con `railway config migrate`.
