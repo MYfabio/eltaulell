@@ -284,6 +284,7 @@ export default function HomePage() {
         <Link href="/privacitat">Privacitat</Link>
         <Link href="/termes">Termes d'ús</Link>
         <Link href="/acces">Accés als perfils</Link>
+        <a href="https://www.aulaia.cat">Un projecte de www.aulaia.cat</a>
       </footer>
     </main>
   );
