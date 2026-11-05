@@ -123,6 +123,23 @@ export default function HomePage() {
         <p><strong>04</strong> Integracions educatives</p>
       </section>
 
+      <section className="landing-intro landing-section" id="problema">
+        <div>
+          <p className="landing-kicker">Quin problema resol?</p>
+          <h2>Un espai propi del centre per comunicar-se i escoltar.</h2>
+        </div>
+        <div className="landing-intro-copy">
+          <p>
+            Comunicar-se amb l’alumnat i escoltar-lo requereix un espai propi del centre. Una
+            plataforma multi-centre reuneix tota la comunitat educativa i millora l’acompanyament tutorial.
+          </p>
+          <p>
+            <strong>Per a quina etapa o perfil serveix?</strong> Tutors i tutores, equips docents i
+            coordinacions de Primària i ESO.
+          </p>
+        </div>
+      </section>
+
       <section className="landing-intro landing-section" id="que-es">
         <div>
           <p className="landing-kicker">Què és El Taulell?</p>
