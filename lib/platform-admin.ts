@@ -49,6 +49,14 @@ function auditDetail(action: string, metadata: unknown) {
   if (action === "SCHOOL_SETTINGS_UPDATED") {
     return "Pla i límits del centre actualitzats";
   }
+  // Alta i baixa de persones: només el perfil, mai nom ni correu.
+  const role = ({ COORDINATOR: "coordinació", TUTOR: "tutoria", DELEGATE: "delegació", STUDENT: "alumnat" } as Record<string, string>)[String(data.role)] || "persona";
+  if (action === "USER_PREREGISTERED") return `Alta prèvia (${role})`;
+  if (action === "USER_SUSPENDED") return `Persona suspesa (${role})`;
+  if (action === "USER_REACTIVATED") return `Persona reactivada (${role})`;
+  if (action === "USER_DELETED") {
+    return `Persona esborrada (${role})${data.userDeleted ? ", compte inclòs" : ""}${Number(data.learningTasks) ? `, ${Number(data.learningTasks)} tasques` : ""}`;
+  }
   return "Canvi d'administració de plataforma";
 }
 

@@ -7,6 +7,7 @@ import {
   type PlatformSchoolPlan,
   type PlatformSnapshot,
 } from "@/lib/platform-admin-types";
+import SchoolMembers from "./school-members";
 
 async function responseMessage(response: Response) {
   const body = await response.json().catch(() => ({}));
@@ -30,6 +31,7 @@ function SchoolRow({ school }: { school: PlatformSchool }) {
   const [maxGroups, setMaxGroups] = useState(school.maxGroups);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [showMembers, setShowMembers] = useState(false);
 
   useEffect(() => {
     setPlan(school.plan);
@@ -111,8 +113,12 @@ function SchoolRow({ school }: { school: PlatformSchool }) {
         >
           {school.active ? "Suspendre centre" : "Activar centre"}
         </button>
+        <button aria-expanded={showMembers} className="members-toggle" onClick={() => setShowMembers((value) => !value)} type="button">
+          {showMembers ? "Amagar persones" : "Persones"}
+        </button>
       </footer>
       {message && <p className="platform-inline-message" role="status">{message}</p>}
+      {showMembers && <SchoolMembers schoolId={school.id} schoolName={school.name} />}
     </article>
   );
 }

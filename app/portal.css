@@ -1712,6 +1712,112 @@ textarea:focus-visible {
   background: #4d7758;
 }
 
+.platform-school-card footer .members-toggle {
+  margin-left: auto;
+  background: #e7edf4;
+  color: #365b82;
+}
+
+.platform-members {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid #e1e5df;
+  padding-top: 14px;
+}
+
+.platform-members-new {
+  display: grid;
+  gap: 10px;
+}
+
+.platform-members-new strong {
+  color: var(--navy);
+  font-size: 11px;
+}
+
+.platform-members-new p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.platform-members-new .platform-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.platform-members-new button,
+.platform-members-actions button {
+  justify-self: start;
+  border: 0;
+  border-radius: 9px;
+  background: var(--navy);
+  padding: 9px 12px;
+  color: white;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.platform-members-actions .danger-action {
+  background: transparent;
+  color: #a14f37;
+  outline: 1px solid #d9aaa0;
+}
+
+.platform-members-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.platform-members-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 9px;
+  background: #f6f8f5;
+  padding: 9px 10px;
+}
+
+.platform-members-list li.is-suspended {
+  opacity: .75;
+}
+
+.platform-members-list li > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.platform-members-list strong {
+  color: var(--navy);
+  font-size: 10px;
+}
+
+.platform-members-list small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-members-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .platform-members-new .platform-form-grid,
+  .platform-members-list li {
+    grid-template-columns: 1fr;
+  }
+}
+
 .platform-audit-panel {
   display: grid;
   gap: 14px;

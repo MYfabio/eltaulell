@@ -111,6 +111,7 @@ export interface DatabaseClient {
   };
   invitation: {
     create: DbMethod;
+    deleteMany: DbMethod;
     findUnique: DbMethod;
     update: DbMethod;
     updateMany: DbMethod;
@@ -131,6 +132,7 @@ export interface DatabaseClient {
   schoolMembership: {
     count: DbMethod;
     create: DbMethod;
+    delete: DbMethod;
     findFirst: DbMethod;
     findMany: DbMethod;
     findUnique: DbMethod;
@@ -144,7 +146,7 @@ export interface DatabaseClient {
     update: DbMethod;
     updateMany: DbMethod;
   };
-  user: { findUnique: DbMethod; upsert: DbMethod };
+  user: { delete: DbMethod; findUnique: DbMethod; upsert: DbMethod };
 }
 
 type LocalState = {
@@ -278,6 +280,14 @@ export function createLocalDb(): DatabaseClient {
     state.boards.find((board) => board.groupId === groupId) ?? null;
   const membershipById = (id: string | null | undefined) =>
     state.memberships.find((membership) => membership.id === id) ?? null;
+
+  function removeMembershipCascade(membershipId: string) {
+    state.groupMemberships = state.groupMemberships.filter((row) => row.schoolMembershipId !== membershipId);
+    state.learningTasks = state.learningTasks.filter((row) => row.studentMembershipId !== membershipId);
+    state.aiUsageEvents = state.aiUsageEvents.filter((row) => row.studentMembershipId !== membershipId);
+    state.sessions = state.sessions.filter((row) => row.schoolMembershipId !== membershipId);
+    state.memberships = state.memberships.filter((row) => row.id !== membershipId);
+  }
 
   function sessionResult(session: Row) {
     const membership = membershipById(session.schoolMembershipId);
@@ -587,6 +597,31 @@ export function createLocalDb(): DatabaseClient {
           ? state.users.find((candidate) => candidate.email === where.email.toLowerCase())
           : state.users.find((candidate) => candidate.id === where.id);
         return project(user, select);
+      },
+      // Mateixes regles que l'esquema: el que és seu en cascada, la resta sense autor.
+      async delete({ where }: Row) {
+        const user = userById(where.id);
+        if (!user) throw Object.assign(new Error("User not found"), { code: "P2025" });
+        state.memberships.filter((membership) => membership.userId === user.id)
+          .forEach((membership) => removeMembershipCascade(membership.id));
+        state.passwordCredentials = state.passwordCredentials.filter((row) => row.userId !== user.id);
+        state.sessions = state.sessions.filter((row) => row.userId !== user.id);
+        state.oauthAccounts = state.oauthAccounts.filter((row) => row.userId !== user.id);
+        state.passwordResetTokens = state.passwordResetTokens.filter((row) => row.userId !== user.id);
+        state.platformAdmins = state.platformAdmins.filter((row) => row.userId !== user.id);
+        const clear = (rows: Row[], key: string) => rows.forEach((row) => { if (row[key] === user.id) row[key] = null; });
+        clear(state.posts, "authorId");
+        clear(state.polls, "createdById");
+        clear(state.polls, "validatedById");
+        clear(state.votes, "voterId");
+        clear(state.attachments, "uploadedById");
+        clear(state.anonymousQueryMessages, "responderId");
+        clear(state.auditLogs, "actorId");
+        clear(state.emailDeliveries, "userId");
+        clear(state.invitations, "acceptedById");
+        clear(state.groupInvites, "createdById");
+        state.users = state.users.filter((row) => row.id !== user.id);
+        return user;
       },
     },
 
@@ -1221,9 +1256,25 @@ export function createLocalDb(): DatabaseClient {
         matches.forEach((invitation) => Object.assign(invitation, data));
         return { count: matches.length };
       },
+      async deleteMany({ where }: Row) {
+        const before = state.invitations.length;
+        state.invitations = state.invitations.filter((invitation) => {
+          if (where.schoolId && invitation.schoolId !== where.schoolId) return true;
+          if (where.email && invitation.email !== where.email) return true;
+          return false;
+        });
+        return { count: before - state.invitations.length };
+      },
     },
 
     schoolMembership: {
+      // Mateixes cascades que l'esquema de Prisma: grups, sessions, tasques i ús d'IA.
+      async delete({ where }: Row) {
+        const membership = membershipById(where.id);
+        if (!membership) throw Object.assign(new Error("Membership not found"), { code: "P2025" });
+        removeMembershipCascade(membership.id);
+        return membership;
+      },
       async upsert({ where, create, update }: Row) {
         const key = where.schoolId_userId;
         const existing = state.memberships.find(
