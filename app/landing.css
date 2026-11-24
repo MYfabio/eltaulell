@@ -544,6 +544,15 @@
   display: block;
 }
 
+/* Resposta breu sota la pregunta «Per a qui és El Taulell?», amb el to del text de la portada. */
+.landing-audience .landing-section-heading > p:last-child:not(.landing-kicker) {
+  max-width: 640px;
+  margin-top: 24px;
+  color: #5f6c7f;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
 .landing-audience-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

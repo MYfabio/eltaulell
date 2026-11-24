@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { metadadesPublica } from "@/lib/seo";
 
-export const metadata = { title: "Condicions d'ús · El Taulell" };
+export const metadata = metadadesPublica({
+  titol: "Condicions d'ús · El Taulell",
+  descripcio: "Condicions d'ús d'El Taulell: comptes, ús educatiu acceptable, Tutor IA, integracions i continuïtat del servei.",
+  cami: "/termes",
+});
 
 export default function TermsPage() {
   const operator = process.env.LEGAL_OPERATOR_NAME || "l'operador identificat en el contracte del centre";

@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
+import { URL_PUBLICA } from "@/lib/seo";
 import "./globals.css";
 import "./portal.css";
 
+// Sense canònica ni Open Graph globals i amb noindex per defecte: només les pàgines públiques
+// (portada, privacitat i termes, via lib/seo.ts) es deixen indexar i porten canònica, perquè
+// cap pàgina privada n'hereti una que apunti a la portada.
 export const metadata: Metadata = {
-  metadataBase: new URL("https://eltaulell-production.up.railway.app"),
+  metadataBase: new URL(URL_PUBLICA),
   title: "El Taulell · La comunitat educativa, més connectada",
   description:
     "Plataforma educativa multi-centre per comunicar, escoltar l’alumnat i millorar l’acompanyament tutorial.",
-  openGraph: {
-    title: "El Taulell",
-    description: "Tot el que passa a classe, en un sol lloc.",
-    images: [{ url: "/og.png", width: 1733, height: 909 }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "El Taulell",
-    description: "Tot el que passa a classe, en un sol lloc.",
-    images: ["/og.png"],
-  },
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

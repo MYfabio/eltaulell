@@ -1,13 +1,11 @@
 import type { MetadataRoute } from "next";
-
-const BASE = "https://eltaulell.aulaia.cat";
+import { URL_PUBLICA } from "@/lib/seo";
 
 // Només pàgines públiques: la resta demana sessió.
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
   return [
-    { url: BASE, lastModified: now, changeFrequency: "monthly", priority: 1 },
-    { url: `${BASE}/privacitat`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE}/termes`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${URL_PUBLICA}/`, changeFrequency: "monthly", priority: 1 },
+    { url: `${URL_PUBLICA}/privacitat`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${URL_PUBLICA}/termes`, changeFrequency: "yearly", priority: 0.3 },
   ];
 }

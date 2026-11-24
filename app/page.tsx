@@ -1,6 +1,78 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { NOM_SITE, URL_PUBLICA, jsonLdSegur, metadadesPublica } from "@/lib/seo";
 import "./landing.css";
+
+const DESCRIPCIO =
+  "Plataforma educativa multi-centre per comunicar, escoltar l’alumnat i millorar l’acompanyament tutorial a Primària i ESO.";
+
+export const metadata: Metadata = metadadesPublica({
+  titol: "El Taulell · La comunitat educativa, més connectada",
+  descripcio: DESCRIPCIO,
+  cami: "/",
+  titolAbsolut: true,
+});
+
+// Preguntes freqüents: es mostren a la portada i les mateixes alimenten el JSON-LD (FAQPage).
+const preguntes = [
+  {
+    pregunta: "Substitueix Classroom, Moodle o les eines del centre?",
+    resposta:
+      "No. El Taulell no substitueix les eines oficials del centre ni la relació humana: hi té connexions preparades per reunir cursos i tasques en un mateix espai.",
+  },
+  {
+    pregunta: "L’assistent fa la feina per l’alumne?",
+    resposta:
+      "No. Ajuda a pensar el següent pas, fa preguntes i deriva al tutor quan cal. No diagnostica, no pren decisions i no substitueix tutors, orientadors ni protocols del centre.",
+  },
+  {
+    pregunta: "Les consultes anònimes identifiquen l’alumne?",
+    resposta:
+      "No. Les consultes anònimes no desen l’identificador de l’alumne, perquè pugui expressar dubtes o demanar ajuda amb més confiança.",
+  },
+];
+
+function dadesEstructurades() {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${URL_PUBLICA}/#web`,
+        url: `${URL_PUBLICA}/`,
+        name: NOM_SITE,
+        inLanguage: "ca",
+        publisher: { "@id": "https://www.aulaia.cat/#organitzacio" },
+      },
+      {
+        "@type": "WebApplication",
+        "@id": `${URL_PUBLICA}/#aplicacio`,
+        name: NOM_SITE,
+        url: `${URL_PUBLICA}/`,
+        description: DESCRIPCIO,
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Web",
+        inLanguage: "ca",
+        image: `${URL_PUBLICA}/og.png`,
+        educationalLevel: ["Educació Primària", "Educació Secundària Obligatòria"],
+        audience: { "@type": "EducationalAudience", educationalRole: "teacher" },
+        provider: { "@type": "Organization", "@id": "https://www.aulaia.cat/#organitzacio", name: "aulaia.cat", url: "https://www.aulaia.cat" },
+        isPartOf: { "@id": `${URL_PUBLICA}/#web` },
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${URL_PUBLICA}/#preguntes`,
+        inLanguage: "ca",
+        mainEntity: preguntes.map((item) => ({
+          "@type": "Question",
+          name: item.pregunta,
+          acceptedAnswer: { "@type": "Answer", text: item.resposta },
+        })),
+      },
+    ],
+  };
+}
 
 const functions = [
   {
@@ -53,6 +125,7 @@ const audiences = [
 export default function HomePage() {
   return (
     <main className="landing">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdSegur(dadesEstructurades()) }} />
       <header className="landing-header">
         <Link className="landing-brand" href="/" aria-label="El Taulell, inici">
           <span>T</span>
@@ -142,15 +215,16 @@ export default function HomePage() {
 
       <section className="landing-intro landing-section" id="que-es">
         <div>
-          <p className="landing-kicker">Què és El Taulell?</p>
-          <h2>Un punt de trobada per a tota la comunitat educativa.</h2>
+          <p className="landing-kicker">Un punt de trobada per a tota la comunitat educativa</p>
+          <h2>Què és El Taulell?</h2>
         </div>
         <div className="landing-intro-copy">
           <p>
-            El Taulell recupera la senzillesa del suro de classe i la porta a
-            un entorn digital pensat per a centres educatius. La informació
-            important deixa d’estar dispersa i cada persona hi accedeix segons
-            el seu rol.
+            El Taulell és una plataforma educativa multi-centre que porta el
+            suro de classe a un entorn digital. Reuneix avisos, tasques,
+            consultes anònimes, calendari i un assistent orientador en un sol
+            espai, i cada persona (coordinació, tutoria, delegació o alumnat)
+            hi accedeix segons el seu rol.
           </p>
           <p>
             No substitueix la relació humana ni les eines oficials del centre:
@@ -231,8 +305,15 @@ export default function HomePage() {
 
       <section className="landing-audience landing-section" id="destinataris">
         <div className="landing-section-heading">
-          <p className="landing-kicker">A qui s’adreça?</p>
-          <h2>Una mateixa comunitat, experiències diferents.</h2>
+          <p className="landing-kicker">Una mateixa comunitat, experiències diferents</p>
+          <h2>Per a qui és El Taulell?</h2>
+          <p>
+            El Taulell és per a centres educatius de Primària i ESO: tutors i
+            tutores, equips docents i coordinacions que volen comunicar-se amb
+            l’alumnat i fer-ne el seguiment tutorial. També hi entren la
+            delegació de cada grup, que proposa activitats i enquestes, i
+            l’alumnat, que llegeix el taulell, vota i envia consultes anònimes.
+          </p>
         </div>
         <div className="landing-audience-grid">
           {audiences.map((item, index) => (
@@ -280,6 +361,22 @@ export default function HomePage() {
           El Taulell és una eina de suport. Cada centre defineix el seu projecte,
           els seus protocols i els responsables de cada actuació.
         </p>
+      </section>
+
+      <section className="landing-audience landing-section" id="preguntes">
+        <div className="landing-section-heading">
+          <p className="landing-kicker">Preguntes freqüents</p>
+          <h2>El que més ens pregunten.</h2>
+        </div>
+        <div className="landing-audience-grid">
+          {preguntes.map((item, index) => (
+            <article key={item.pregunta}>
+              <span>0{index + 1}</span>
+              <h3>{item.pregunta}</h3>
+              <p>{item.resposta}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="landing-cta">

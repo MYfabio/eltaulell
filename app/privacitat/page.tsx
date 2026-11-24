@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { metadadesPublica } from "@/lib/seo";
 
-export const metadata = { title: "Privacitat i protecció de dades · El Taulell" };
+export const metadata = metadadesPublica({
+  titol: "Privacitat i protecció de dades · El Taulell",
+  descripcio: "Com tracta El Taulell les dades del centre i de l'alumnat: responsables, finalitats, menors, proveïdors, conservació, seguretat i drets.",
+  cami: "/privacitat",
+});
 
 export default function PrivacyPage() {
   const operator = process.env.LEGAL_OPERATOR_NAME || "l'operador d'El Taulell identificat en el contracte del centre";
