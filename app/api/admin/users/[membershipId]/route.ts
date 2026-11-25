@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getActorId, getSchoolForAdmin } from "@/lib/admin";
 import { getDemoViewer } from "@/lib/demo-auth";
 import { db } from "@/lib/db";
+import { dominiDe, enviarAvis, rolComu } from "@/lib/avisos";
 import { can, PERMISSIONS, type AppRole } from "@/lib/permissions";
 
 const updatePersonSchema = z.object({
@@ -114,6 +115,11 @@ export async function PATCH(
         },
       });
     });
+    // Avisos a aulaia.cat: només domini del correu i rols comuns.
+    const centre = dominiDe(existing.user.email);
+    if (rolComu(existing.role) !== rolComu(role)) void enviarAvis({ tipus: "rol.canvi", centre, datos: { abans: rolComu(existing.role), ara: rolComu(role) } });
+    if (status === "SUSPENDED" && existing.status !== "SUSPENDED") void enviarAvis({ tipus: "baixa", centre, datos: { rol: rolComu(role) } });
+    if (status === "ACTIVE" && existing.status === "SUSPENDED") void enviarAvis({ tipus: "alta.validada", centre, datos: { rol: rolComu(role) } });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Unable to update school member", error);

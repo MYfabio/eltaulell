@@ -1,4 +1,5 @@
 import "server-only";
+import { dominiDe, enviarAvis, rolComu } from "@/lib/avisos";
 
 import { db } from "@/lib/db";
 import { issueAccountInvitation } from "@/lib/account-auth";
@@ -81,6 +82,7 @@ export async function altaPrevia(input: AltaPreviaInput, platformAdminId: string
           metadata: { role: input.role },
         },
       });
+      void enviarAvis({ tipus: "alta.solicitud", centre: dominiDe(email), datos: { rol: rolComu(input.role) } });
       return {
         status: "created" as const,
         membershipId: membership.id as string,
@@ -153,6 +155,9 @@ export async function baixa(
         },
       });
     });
+    const centreAvis = dominiDe(membership.user.email);
+    if (mode === "reactivar") void enviarAvis({ tipus: "alta.validada", centre: centreAvis, datos: { rol: rolComu(membership.role) } });
+    else void enviarAvis({ tipus: "baixa", centre: centreAvis, datos: { rol: rolComu(membership.role) } });
     return { status: "ok", mode, userDeleted: false, learningTasks: 0 };
   }
 
@@ -175,5 +180,6 @@ export async function baixa(
     });
     return others === 0;
   });
+  void enviarAvis({ tipus: "baixa", centre: dominiDe(email), datos: { rol: rolComu(membership.role) } });
   return { status: "ok", mode, userDeleted, learningTasks: tasks.length };
 }

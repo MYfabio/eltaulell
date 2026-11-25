@@ -1,4 +1,5 @@
 import "server-only";
+import { enviarAvis, rolComu } from "@/lib/avisos";
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getViewerAccessContext } from "@/lib/access-control";
@@ -453,6 +454,9 @@ export async function syncGoogleClassroom(viewer: DemoViewer) {
       db.integrationSyncJob.update({ where: { id: job.id }, data: { status: "SUCCESS", processedCount, completedAt: new Date() } }),
       db.integrationConnection.update({ where: { id: connection.id }, data: { status: "CONNECTED", lastSyncedAt: new Date() } }),
     ]);
+    // Importació: un sol avís amb el recompte, no un per persona.
+    const centreImport = (await db.school.findFirst({ where: { id: access.schoolId }, select: { emailDomain: true } }))?.emailDomain?.toLowerCase() || null;
+    void enviarAvis({ tipus: "alta.solicitud", centre: centreImport, datos: { rol: rolComu("STUDENT"), invitacions: processedCount } });
     return { processedCount, courseCount: courses.length };
   } catch (error) {
     await logSystemError({

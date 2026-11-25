@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { dominiDe, enviarAvis, rolComu } from "@/lib/avisos";
 import { z } from "zod";
 import { getActorId, getSchoolForAdmin } from "@/lib/admin";
 import { getDemoViewer } from "@/lib/demo-auth";
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
       return { membership: created, invitation };
     });
 
+    void enviarAvis({ tipus: "alta.solicitud", centre: dominiDe(email), datos: { rol: rolComu(role) } });
     const activationPath = `/activar?token=${encodeURIComponent(result.invitation.token)}`;
     await sendInvitationEmail({
       to: email,

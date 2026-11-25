@@ -1,4 +1,5 @@
 import "server-only";
+import { dominiDe, enviarAvis, rolComu } from "@/lib/avisos";
 
 import { createHash, randomBytes } from "node:crypto";
 import { db, type DatabaseClient } from "@/lib/db";
@@ -85,7 +86,7 @@ export async function activateAccount(token: string, password: string) {
   if (!passwordIsStrongEnough(password)) return { error: "WEAK_PASSWORD" } as const;
   const passwordHash = createPasswordHash(password);
 
-  return db.$transaction(async (transaction) => {
+  const resultat = await db.$transaction(async (transaction) => {
     const invitation = await transaction.invitation.findUnique({
       where: { tokenHash: tokenHash(token) },
       include: { school: { select: { id: true, active: true } } },
@@ -161,8 +162,12 @@ export async function activateAccount(token: string, password: string) {
       userId: user.id as string,
       membershipId: membership.id as string,
       role: membership.role as AppRole,
+      centre: dominiDe(invitation.email),
     } as const;
   });
+  // Compte activat: avís a aulaia.cat (domini i rol, mai el correu).
+  if ("userId" in resultat) void enviarAvis({ tipus: "alta.validada", centre: resultat.centre ?? null, datos: { rol: rolComu(resultat.role) } });
+  return resultat;
 }
 
 export async function authenticateAccount(
